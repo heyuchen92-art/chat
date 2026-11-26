@@ -1,43 +1,56 @@
 const express = require('express');
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
 const { Server } = require('socket.io');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// 👇 新增这 3 行：解决 Cannot GET /
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
 const PORT = process.env.PORT || 3000;
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
 
-// 管理员配置（可修改）
-const ADMIN_PASSWORD = 'admin123';  // 管理员密码
+// 管理员密码（生产环境建议改为环境变量）
+const ADMIN_PASSWORD = 'admin123';
+
+// 存储在线用户
+const onlineUsers = new Map(); // socket.id -> { nickname, isAdmin }
+// 存储被禁言用户
+const mutedUsers = new Map(); // socket.id -> { until, permanent }
 
 // 读取历史消息
 function loadMessages() {
   try {
-    const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
-    return JSON.parse(data);
+    if (fs.existsSync(MESSAGES_FILE)) {
+      const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
+      return JSON.parse(data);
+    }
   } catch (err) {
-    return [];
+    console.error('读取消息文件失败:', err);
+  }
+  return [];
+}
+
+// 保存消息
+function saveMessages(messages) {
+  try {
+    fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+  } catch (err) {
+    console.error('保存消息失败:', err);
   }
 }
 
-// 保存消息到文件
-function saveMessages(messages) {
-  fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
-}
+// 根路径路由
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
+// 静态资源
+app.use(express.static(__dirname));
+
+// 初始化消息存储
 let messages = loadMessages();
-
-// 存储被禁言的用户（socket.id 集合）
-const mutedUsers = new Set();
 
 io.on('connection', (socket) => {
   console.log('用户连接:', socket.id);
@@ -45,116 +58,155 @@ io.on('connection', (socket) => {
   // 发送历史消息
   socket.emit('allMessages', messages);
 
-  // 用户设置昵称
+  // 设置昵称
   socket.on('set nickname', (nickname) => {
-    socket.nickname = nickname || '匿名用户';
-    socket.isAdmin = false;  // 默认不是管理员
-    console.log('用户昵称:', socket.nickname);
+    socket.nickname = nickname;
+    socket.isAdmin = false;
+    onlineUsers.set(socket.id, { nickname, isAdmin: false });
+    io.emit('online users', Array.from(onlineUsers.values()));
+    io.emit('system notification', {
+      text: `${nickname} 加入了聊天室`,
+      type: 'join'
+    });
   });
 
-  // 管理员登录验证
+  // 管理员登录
   socket.on('admin login', (password) => {
     if (password === ADMIN_PASSWORD) {
       socket.isAdmin = true;
+      onlineUsers.set(socket.id, { nickname: socket.nickname, isAdmin: true });
+      io.emit('online users', Array.from(onlineUsers.values()));
       socket.emit('admin login success');
-      io.emit('system message', `🔑 ${socket.nickname} 已成为管理员`);
-      console.log('管理员登录:', socket.nickname);
+      io.emit('system notification', {
+        text: `${socket.nickname} 已成为管理员`,
+        type: 'admin'
+      });
     } else {
       socket.emit('admin login fail', '密码错误');
     }
   });
 
-  // 禁言用户（只有管理员可以调用）
-  socket.on('mute user', (targetSocketId, duration) => {
-    if (!socket.isAdmin) {
-      socket.emit('system message', '❌ 只有管理员才能禁言用户');
-      return;
-    }
-    mutedUsers.add(targetSocketId);
-    const targetSocket = io.sockets.sockets.get(targetSocketId);
-    if (targetSocket) {
-      targetSocket.emit('system message', `🔇 你已被管理员禁言 ${duration} 秒`);
-      io.emit('system message', `🔇 ${targetSocket.nickname} 已被禁言 ${duration} 秒`);
-      // 定时解除禁言
-      setTimeout(() => {
-        mutedUsers.delete(targetSocketId);
-        if (targetSocket) {
-          targetSocket.emit('system message', '🔊 你的禁言已解除');
-        }
-      }, duration * 1000);
-    }
-  });
-
-  // 永久禁言（只有管理员可以调用）
-  socket.on('mute user permanent', (targetSocketId) => {
-    if (!socket.isAdmin) {
-      socket.emit('system message', '❌ 只有管理员才能禁言用户');
-      return;
-    }
-    mutedUsers.add(targetSocketId);
-    const targetSocket = io.sockets.sockets.get(targetSocketId);
-    if (targetSocket) {
-      targetSocket.emit('system message', '🔇 你已被永久禁言');
-      io.emit('system message', `🔇 ${targetSocket.nickname} 已被永久禁言`);
-    }
-  });
-
-  // 解除禁言（只有管理员可以调用）
-  socket.on('unmute user', (targetSocketId) => {
-    if (!socket.isAdmin) {
-      socket.emit('system message', '❌ 只有管理员才能解除禁言');
-      return;
-    }
-    mutedUsers.delete(targetSocketId);
-    const targetSocket = io.sockets.sockets.get(targetSocketId);
-    if (targetSocket) {
-      targetSocket.emit('system message', '🔊 你已被解除禁言');
-    }
-  });
-
-  // 接收新消息
+  // 处理聊天消息
   socket.on('chat message', (msg) => {
     // 检查是否被禁言
-    if (mutedUsers.has(socket.id)) {
-      socket.emit('system message', '🔇 你已被禁言，无法发送消息');
+    const muteInfo = mutedUsers.get(socket.id);
+    if (muteInfo) {
+      if (muteInfo.permanent) {
+        socket.emit('system notification', {
+          text: '你已被永久禁言，无法发送消息',
+          type: 'mute'
+        });
+        return;
+      }
+      if (muteInfo.until > Date.now()) {
+        const remaining = Math.ceil((muteInfo.until - Date.now()) / 1000);
+        socket.emit('system notification', {
+          text: `你已被禁言，剩余 ${remaining} 秒`,
+          type: 'mute'
+        });
+        return;
+      }
+      // 禁言已过期，解除
+      mutedUsers.delete(socket.id);
+    }
+
+    const message = {
+      avatar: '😊',
+      nickname: socket.nickname || '匿名用户',
+      text: msg.text,
+      time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+      isAdmin: socket.isAdmin || false
+    };
+
+    // 保存到历史消息
+    messages.push(message);
+    saveMessages(messages);
+
+    // 广播消息
+    io.emit('chat message', message);
+  });
+
+  // 禁言用户（仅管理员）
+  socket.on('mute user', (data) => {
+    if (!socket.isAdmin) {
+      socket.emit('system notification', {
+        text: '只有管理员才能禁言用户',
+        type: 'error'
+      });
       return;
     }
 
-    const messageData = {
-      avatar: '😊',
-      nickname: socket.nickname || '匿名用户',
-      text: msg,
-      time: new Date().toLocaleTimeString(),
-      isAdmin: socket.isAdmin || false  // 标记是否为管理员消息
-    };
+    const targetSocket = io.sockets.sockets.get(data.targetId);
+    if (!targetSocket) {
+      socket.emit('system notification', {
+        text: '目标用户不在线',
+        type: 'error'
+      });
+      return;
+    }
 
-    const historyEntry = `${messageData.avatar} ${messageData.nickname}: ${messageData.text}`;
-    messages.push(historyEntry);
-    saveMessages(messages);
-
-    io.emit('chat message', messageData);
+    if (data.duration === 'permanent') {
+      mutedUsers.set(data.targetId, { permanent: true });
+      io.emit('system notification', {
+        text: `${targetSocket.nickname} 已被永久禁言`,
+        type: 'mute'
+      });
+    } else {
+      const durationMs = data.duration * 1000;
+      mutedUsers.set(data.targetId, { until: Date.now() + durationMs });
+      io.emit('system notification', {
+        text: `${targetSocket.nickname} 已被禁言 ${data.duration} 秒`,
+        type: 'mute'
+      });
+      
+      // 定时解除禁言
+      setTimeout(() => {
+        if (mutedUsers.has(data.targetId) && !mutedUsers.get(data.targetId).permanent) {
+          mutedUsers.delete(data.targetId);
+          io.emit('system notification', {
+            text: `${targetSocket.nickname} 禁言已解除`,
+            type: 'unmute'
+          });
+        }
+      }, durationMs);
+    }
   });
 
-  // 获取在线用户列表（用于管理员选择禁言对象）
-  socket.on('get users', () => {
-    const users = [];
-    for (const [id, s] of io.sockets.sockets) {
-      users.push({
-        id: id,
-        nickname: s.nickname || '匿名用户',
-        isAdmin: s.isAdmin || false
+  // 解除禁言（仅管理员）
+  socket.on('unmute user', (data) => {
+    if (!socket.isAdmin) {
+      socket.emit('system notification', {
+        text: '只有管理员才能解除禁言',
+        type: 'error'
+      });
+      return;
+    }
+
+    if (mutedUsers.has(data.targetId)) {
+      mutedUsers.delete(data.targetId);
+      const targetSocket = io.sockets.sockets.get(data.targetId);
+      io.emit('system notification', {
+        text: `${targetSocket ? targetSocket.nickname : '用户'} 已被解除禁言`,
+        type: 'unmute'
       });
     }
-    socket.emit('users list', users);
   });
 
-  // 用户断开连接
+  // 断开连接
   socket.on('disconnect', () => {
-    mutedUsers.delete(socket.id);
+    if (socket.nickname) {
+      onlineUsers.delete(socket.id);
+      mutedUsers.delete(socket.id);
+      io.emit('online users', Array.from(onlineUsers.values()));
+      io.emit('system notification', {
+        text: `${socket.nickname} 离开了聊天室`,
+        type: 'leave'
+      });
+    }
     console.log('用户断开:', socket.id);
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`聊天室运行在 http://localhost:${PORT}`);
+  console.log(`聊天室服务器已启动: http://localhost:${PORT}`);
 });
