@@ -9,14 +9,16 @@
     body { font-family: 'Microsoft YaHei', sans-serif; background: #f0f2f5; }
     .container { max-width: 800px; margin: 0 auto; padding: 20px; }
     .header { background: #4a90d9; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
-    .chat-box { background: white; border: 1px solid #ddd; border-radius: 0 0 8px 8px; height: 500px; overflow-y: auto; padding: 15px; }
-    .message { margin-bottom: 10px; padding: 8px 12px; border-radius: 8px; max-width: 70%; }
-    .message.self { background: #4a90d9; color: white; margin-left: auto; }
+    .chat-box { background: white; border: 1px solid #ddd; height: 450px; overflow-y: auto; padding: 15px; }
+    .message { margin-bottom: 10px; padding: 8px 12px; border-radius: 8px; max-width: 70%; display: flex; align-items: flex-start; gap: 8px; }
+    .message.self { background: #4a90d9; color: white; margin-left: auto; flex-direction: row-reverse; }
     .message.other { background: #e9ecef; margin-right: auto; }
-    .message.system { background: #fff3cd; text-align: center; font-size: 14px; color: #856404; margin: 5px auto; }
-    .message img { max-width: 200px; max-height: 200px; border-radius: 4px; display: block; margin-top: 5px; }
+    .message.system { background: #fff3cd; text-align: center; font-size: 14px; color: #856404; margin: 5px auto; justify-content: center; }
+    .message img.avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .message .content-wrapper { display: flex; flex-direction: column; }
     .message .username { font-size: 12px; color: #666; margin-bottom: 3px; }
     .message.self .username { color: #e0e0e0; }
+    .message img.content-img { max-width: 200px; max-height: 200px; border-radius: 4px; display: block; margin-top: 5px; }
     .input-area { display: flex; gap: 10px; padding: 15px; background: white; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px; }
     .input-area input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
     .input-area button { padding: 10px 20px; background: #4a90d9; color: white; border: none; border-radius: 4px; cursor: pointer; }
@@ -24,6 +26,10 @@
     .input-area input[type="file"] { display: none; }
     .upload-btn { background: #28a745 !important; }
     .upload-btn:hover { background: #218838 !important; }
+    .profile-bar { background: white; border: 1px solid #ddd; border-bottom: none; padding: 10px 15px; display: flex; align-items: center; gap: 10px; }
+    .profile-bar img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; object-fit: cover; }
+    .profile-bar input[type="text"] { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    .profile-bar button { padding: 8px 15px; background: #4a90d9; color: white; border: none; border-radius: 4px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -31,6 +37,13 @@
     <div class="header">
       <h3>聊天室</h3>
       <span>在线人数: <span id="userCount">0</span></span>
+    </div>
+    <!-- 昵称和头像设置栏 -->
+    <div class="profile-bar">
+      &lt;img id="avatarPreview" src="" alt="头像" onclick="document.getElementById('avatarInput').click()" title="点击更换头像"&gt;
+      <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="changeAvatar(this)">
+      <input type="text" id="nicknameInput" placeholder="输入昵称...">
+      <button onclick="saveProfile()">保存</button>
     </div>
     <div class="chat-box" id="chatBox"></div>
     <div class="input-area">
@@ -47,13 +60,72 @@
     const chatBox = document.getElementById('chatBox');
     const messageInput = document.getElementById('messageInput');
     const userCount = document.getElementById('userCount');
+    const avatarPreview = document.getElementById('avatarPreview');
+    const nicknameInput = document.getElementById('nicknameInput');
 
-    // 获取或设置用户名
-    let username = localStorage.getItem('username') || '用户' + Math.floor(Math.random() * 1000);
-    localStorage.setItem('username', username);
+    // 默认头像（蓝色占位图）
+    const DEFAULT_AVATAR = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDgwIDgwIj48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiM0YTkwZDkiLz48dGV4dCB4PSI0MCIgeT0iNDgiIGZvbnQtc2l6ZT0iMzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIj7jgII8L3RleHQ+PC9zdmc+';
 
-    // 发送加入通知
-    socket.emit('userJoined', username);
+    // 从 localStorage 读取用户信息
+    let username = localStorage.getItem('username') || '';
+    let avatar = localStorage.getItem('avatar') || DEFAULT_AVATAR;
+
+    // 初始化显示
+    avatarPreview.src = avatar;
+    nicknameInput.value = username;
+
+    // 如果没有昵称，提示用户设置
+    if (!username) {
+      alert('请先设置你的昵称和头像！');
+    } else {
+      socket.emit('userJoined', username);
+    }
+
+    // 接收历史聊天记录（连接后自动触发）
+    socket.on('history', (history) => {
+      chatBox.innerHTML = '';
+      history.forEach((msg) => {
+        if (msg.type === 'text') {
+          const isSelf = msg.username === username;
+          addMessage(msg.text, isSelf ? 'self' : 'other', msg.username, msg.avatar);
+        } else if (msg.type === 'image') {
+          const isSelf = msg.username === username;
+          addImage(msg.image, isSelf ? 'self' : 'other', msg.username, msg.avatar);
+        }
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    // 更换头像
+    function changeAvatar(input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        alert('头像大小不能超过2MB');
+        input.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        avatar = e.target.result;
+        avatarPreview.src = avatar;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // 保存昵称和头像
+    function saveProfile() {
+      const newName = nicknameInput.value.trim();
+      if (!newName) {
+        alert('昵称不能为空！');
+        return;
+      }
+      username = newName;
+      localStorage.setItem('username', username);
+      localStorage.setItem('avatar', avatar);
+      socket.emit('userJoined', username);
+      alert('昵称和头像已保存！');
+    }
 
     // 更新在线人数
     socket.on('userCount', (count) => {
@@ -68,21 +140,23 @@
     // 接收文本消息
     socket.on('chatMessage', (data) => {
       const isSelf = data.username === username;
-      addMessage(data.text, isSelf ? 'self' : 'other', data.username);
+      addMessage(data.text, isSelf ? 'self' : 'other', data.username, data.avatar);
     });
 
     // 接收图片消息
     socket.on('imageMessage', (data) => {
       const isSelf = data.username === username;
-      addImage(data.image, isSelf ? 'self' : 'other', data.username);
+      addImage(data.image, isSelf ? 'self' : 'other', data.username, data.avatar);
     });
 
     // 发送文本消息
     function sendMessage() {
       const text = messageInput.value.trim();
-      if (text) {
-        socket.emit('chatMessage', { username, text });
+      if (text && username) {
+        socket.emit('chatMessage', { username, avatar, text });
         messageInput.value = '';
+      } else {
+        alert('请先设置昵称！');
       }
     }
 
@@ -90,52 +164,76 @@
     function sendImage(input) {
       const file = input.files[0];
       if (!file) return;
-
-      // 限制图片大小（2MB）
       if (file.size > 2 * 1024 * 1024) {
         alert('图片大小不能超过2MB');
         input.value = '';
         return;
       }
-
       const reader = new FileReader();
       reader.onload = function(e) {
-        socket.emit('imageMessage', { username, image: e.target.result });
+        socket.emit('imageMessage', { username, avatar, image: e.target.result });
         input.value = '';
       };
       reader.readAsDataURL(file);
     }
 
-    // 添加消息到聊天框
-    function addMessage(text, type, username) {
+    // 添加消息到聊天框（含头像）
+    function addMessage(text, type, username, avatar) {
       const div = document.createElement('div');
       div.className = 'message ' + type;
-      if (username) {
-        const nameDiv = document.createElement('div');
-        nameDiv.className = 'username';
-        nameDiv.textContent = username;
-        div.appendChild(nameDiv);
+      
+      if (type !== 'system') {
+        const avatarImg = document.createElement('img');
+        avatarImg.className = 'avatar';
+        avatarImg.src = avatar || DEFAULT_AVATAR;
+        div.appendChild(avatarImg);
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'content-wrapper';
+        if (username) {
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'username';
+          nameDiv.textContent = username;
+          wrapper.appendChild(nameDiv);
+        }
+        const textDiv = document.createElement('div');
+        textDiv.textContent = text;
+        wrapper.appendChild(textDiv);
+        div.appendChild(wrapper);
+      } else {
+        div.textContent = text;
       }
-      const textDiv = document.createElement('div');
-      textDiv.textContent = text;
-      div.appendChild(textDiv);
+      
       chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // 添加图片到聊天框
-    function addImage(imageData, type, username) {
+    // 添加图片到聊天框（含头像）
+    function addImage(imageData, type, username, avatar) {
       const div = document.createElement('div');
       div.className = 'message ' + type;
-      if (username) {
-        const nameDiv = document.createElement('div');
-        nameDiv.className = 'username';
-        nameDiv.textContent = username;
-        div.appendChild(nameDiv);
+      
+      if (type !== 'system') {
+        const avatarImg = document.createElement('img');
+        avatarImg.className = 'avatar';
+        avatarImg.src = avatar || DEFAULT_AVATAR;
+        div.appendChild(avatarImg);
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'content-wrapper';
+        if (username) {
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'username';
+          nameDiv.textContent = username;
+          wrapper.appendChild(nameDiv);
+        }
+        const img = document.createElement('img');
+        img.className = 'content-img';
+        img.src = imageData;
+        wrapper.appendChild(img);
+        div.appendChild(wrapper);
       }
-      const img = document.createElement('img');
-      img.src = imageData;
-      div.appendChild(img);
+      
       chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
