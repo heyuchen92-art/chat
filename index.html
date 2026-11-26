@@ -87,12 +87,12 @@
             });
         });
 
-        // ===== 渲染消息 =====
+        // ===== 渲染消息（使用 emoji 头像，避免 Base64 乱码）=====
         function appendMessage(data) {
             const msgDiv = document.createElement('div');
             msgDiv.className = 'message';
 
-            // 头像直接用 emoji 文本显示
+            // 头像直接用 emoji 文本显示，彻底避免 Base64 乱码问题
             const avatarSpan = document.createElement('span');
             avatarSpan.className = 'msg-avatar';
             avatarSpan.textContent = data.avatar || '😀';
