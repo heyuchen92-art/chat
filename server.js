@@ -8,6 +8,11 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// 👇 新增这 3 行：解决 Cannot GET /
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
 
