@@ -1,7 +1,7 @@
 {
   "name": "chat-room",
   "version": "1.0.0",
-  "description": "A simple chat room with Socket.IO",
+  "description": "A simple chat room with Socket.IO and persistent history",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
