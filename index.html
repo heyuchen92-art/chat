@@ -9,7 +9,7 @@
 <body>
     <!-- 个人资料栏：昵称 + 预设头像选择 -->
     <div class="profile-bar">
-        &lt;img id="avatarPreview" src="data:image/svg+xml;base64,..." alt="头像预览"&gt;
+        <span id="avatarPreview">😀</span>
         <input type="text" id="nicknameInput" placeholder="输入昵称">
         <div id="avatarOptions">
             <span class="avatar-option" data-avatar="😀">😀</span>
@@ -50,7 +50,7 @@
         avatarOptions.forEach(function(option) {
             option.addEventListener('click', function() {
                 const avatar = this.getAttribute('data-avatar');
-                avatarPreview.textContent = avatar; // 用 emoji 直接显示
+                avatarPreview.textContent = avatar;
                 localStorage.setItem('avatar', avatar);
             });
         });
@@ -92,7 +92,7 @@
             const msgDiv = document.createElement('div');
             msgDiv.className = 'message';
 
-            // 头像直接用 emoji 文本显示，不需要 img 标签
+            // 头像直接用 emoji 文本显示
             const avatarSpan = document.createElement('span');
             avatarSpan.className = 'msg-avatar';
             avatarSpan.textContent = data.avatar || '😀';
