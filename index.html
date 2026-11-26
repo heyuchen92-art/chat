@@ -13,128 +13,206 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            max-width: 800px;
-            margin: 0 auto;
-            background: #f0f2f5;
         }
 
-        /* ===== 顶部昵称栏 ===== */
+        /* ===== 在线用户栏 ===== */
+        .online-users-bar {
+            background: #ffffff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .online-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        .online-users-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .online-user-tag {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        /* ===== 个人资料栏 ===== */
         .profile-bar {
+            background: #ffffff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 16px;
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 16px;
-            background: #ffffff;
-            border-bottom: 1px solid #e0e0e0;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
         }
 
-        #nicknameInput {
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4a90d9;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .profile-input {
             flex: 1;
             padding: 8px 12px;
-            border: 1px solid #ccc;
-            border-radius: 20px;
+            border: 1px solid #d0d0d0;
+            border-radius: 8px;
             font-size: 14px;
             outline: none;
             transition: border-color 0.2s;
         }
 
-        #nicknameInput:focus {
+        .profile-input:focus {
             border-color: #4a90d9;
         }
 
         /* ===== 消息区域 ===== */
-        #messages {
+        .messages-area {
             flex: 1;
             overflow-y: auto;
             padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
             background: #f0f2f5;
-            scroll-behavior: smooth;
         }
 
         .message {
             display: flex;
-            margin-bottom: 12px;
             align-items: flex-start;
-            animation: fadeIn 0.3s ease;
+            gap: 8px;
+            max-width: 80%;
         }
 
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #4a90d9;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .message-content {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 8px 12px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-sender {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a90d9;
+            margin-bottom: 4px;
+        }
+
+        .message-text {
+            font-size: 14px;
+            color: #333;
+            word-break: break-word;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        /* 自己的消息靠右 */
+        .message.own {
+            flex-direction: row-reverse;
+            align-self: flex-end;
+        }
+
+        .message.own .message-content {
+            background: #4a90d9;
+            color: #ffffff;
+        }
+
+        .message.own .message-sender {
+            color: #ffffff;
+            text-align: right;
+        }
+
+        .message.own .message-text {
+            color: #ffffff;
+        }
+
+        .message.own .message-time {
+            color: rgba(255, 255, 255, 0.7);
+            text-align: right;
+        }
+
+        /* 消息淡入动画 */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* 统一的笑脸头像 */
-        .msg-avatar {
-            font-size: 28px;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #ffffff;
-            border-radius: 50%;
-            margin-right: 10px;
-            flex-shrink: 0;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        }
-
-        .msg-content {
-            background: #ffffff;
-            padding: 10px 14px;
-            border-radius: 12px;
-            max-width: 70%;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            border-top-left-radius: 4px;
-        }
-
-        .msg-name {
-            font-size: 12px;
-            color: #666;
-            display: block;
-            margin-bottom: 4px;
-            font-weight: 600;
-        }
-
-        .msg-text {
-            font-size: 14px;
-            line-height: 1.5;
-            word-break: break-word;
-            color: #333;
+        .message {
+            animation: fadeIn 0.3s ease;
         }
 
         /* ===== 输入区域 ===== */
         .input-area {
-            display: flex;
-            padding: 12px 16px;
-            border-top: 1px solid #e0e0e0;
             background: #ffffff;
-            gap: 10px;
+            border-top: 1px solid #e0e0e0;
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
         }
 
-        #messageInput {
+        .input-text {
             flex: 1;
             padding: 10px 14px;
-            border: 1px solid #ccc;
+            border: 1px solid #d0d0d0;
             border-radius: 20px;
             font-size: 14px;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        #messageInput:focus {
+        .input-text:focus {
             border-color: #4a90d9;
-            box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.1);
+            box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.2);
         }
 
-        #sendBtn {
-            padding: 10px 24px;
+        .send-btn {
+            padding: 10px 20px;
             background: #4a90d9;
-            color: white;
+            color: #ffffff;
             border: none;
             border-radius: 20px;
             font-size: 14px;
@@ -142,169 +220,215 @@
             transition: background 0.2s, transform 0.1s;
         }
 
-        #sendBtn:hover {
-            background: #357abd;
+        .send-btn:hover {
+            background: #3a7bc8;
         }
 
-        #sendBtn:active {
+        .send-btn:active {
             transform: scale(0.95);
         }
 
-        /* ===== 滚动条美化 ===== */
-        #messages::-webkit-scrollbar {
+        /* ===== 自定义滚动条 ===== */
+        .messages-area::-webkit-scrollbar {
             width: 6px;
         }
 
-        #messages::-webkit-scrollbar-track {
+        .messages-area::-webkit-scrollbar-track {
             background: transparent;
         }
 
-        #messages::-webkit-scrollbar-thumb {
-            background: #ccc;
+        .messages-area::-webkit-scrollbar-thumb {
+            background: #c0c0c0;
             border-radius: 3px;
         }
 
-        #messages::-webkit-scrollbar-thumb:hover {
-            background: #999;
+        .messages-area::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
         }
     </style>
 </head>
 <body>
-    <!-- 顶部昵称栏（已移除头像选择） -->
+
+    <!-- 在线用户栏 -->
+    <div class="online-users-bar">
+        <span class="online-label">🟢 在线用户 (<span id="onlineCount">0</span>)</span>
+        <div id="onlineUsersList" class="online-users-list"></div>
+    </div>
+
+    <!-- 个人资料栏 -->
     <div class="profile-bar">
-        <input type="text" id="nicknameInput" placeholder="输入昵称">
+        <div class="profile-avatar">😊</div>
+        <input type="text" id="nicknameInput" class="profile-input" placeholder="输入你的昵称..." maxlength="20">
     </div>
 
-    <!-- 聊天消息区域 -->
-    <div id="messages"></div>
+    <!-- 消息区域 -->
+    <div id="messagesArea" class="messages-area"></div>
 
-    <!-- 消息输入区域 -->
+    <!-- 输入区域 -->
     <div class="input-area">
-        <input type="text" id="messageInput" placeholder="输入消息...">
-        <button id="sendBtn">发送</button>
+        <input type="text" id="messageInput" class="input-text" placeholder="输入消息，按回车发送..." maxlength="500">
+        <button id="sendBtn" class="send-btn">发送</button>
     </div>
 
+    <!-- Socket.IO 客户端库 -->
     <script src="/socket.io/socket.io.js"></script>
+
     <script>
-        // ===== 元素获取 =====
-        const nicknameInput = document.getElementById('nicknameInput');
-        const messagesDiv = document.getElementById('messages');
+        // ===== 初始化 =====
+        const socket = io();
+        const messagesArea = document.getElementById('messagesArea');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
+        const nicknameInput = document.getElementById('nicknameInput');
+        const onlineCountSpan = document.getElementById('onlineCount');
+        const onlineUsersListDiv = document.getElementById('onlineUsersList');
 
-        // ===== Socket.IO 连接 =====
-        const socket = io();
-
-        // ===== 本地存储键名 =====
-        const HISTORY_KEY = 'chatHistory';
-        const MAX_HISTORY = 200;
-
-        // ===== 读取本地聊天记录 =====
-        function loadHistory() {
-            try {
-                const saved = localStorage.getItem(HISTORY_KEY);
-                return saved ? JSON.parse(saved) : [];
-            } catch (e) {
-                console.error('读取本地记录失败:', e);
-                return [];
-            }
+        // 从 localStorage 恢复昵称
+        let myNickname = localStorage.getItem('nickname') || '';
+        if (myNickname) {
+            nicknameInput.value = myNickname;
         }
 
-        // ===== 保存聊天记录到本地 =====
-        function saveHistory(history) {
-            try {
-                // 只保留最近 200 条
-                const trimmed = history.slice(-MAX_HISTORY);
-                localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
-            } catch (e) {
-                console.error('保存本地记录失败:', e);
-            }
-        }
-
-        // ===== 渲染消息（统一笑脸头像）=====
-        function appendMessage(data) {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'message';
-
-            // 所有用户统一显示笑脸 😊
-            const avatarSpan = document.createElement('span');
-            avatarSpan.className = 'msg-avatar';
-            avatarSpan.textContent = '😊';
-
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'msg-content';
-
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'msg-name';
-            nameSpan.textContent = data.nickname || '匿名用户';
-
-            const textDiv = document.createElement('div');
-            textDiv.className = 'msg-text';
-            textDiv.textContent = data.text;
-
-            contentDiv.appendChild(nameSpan);
-            contentDiv.appendChild(textDiv);
-            msgDiv.appendChild(avatarSpan);
-            msgDiv.appendChild(contentDiv);
-            messagesDiv.appendChild(msgDiv);
-
-            // 自动滚动到底部
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
-        // ===== 页面加载时显示本地历史记录 =====
-        const localHistory = loadHistory();
-        localHistory.forEach(function(msg) {
-            appendMessage(msg);
+        // ===== 在线用户列表 =====
+        // 连接后发送昵称，让服务器登记在线状态
+        socket.on('connect', function() {
+            const nickname = localStorage.getItem('nickname') || '匿名用户';
+            socket.emit('setNickname', nickname);
         });
 
-        // ===== 发送消息 =====
+        // 接收在线用户列表更新
+        socket.on('onlineUsers', function(users) {
+            onlineCountSpan.textContent = users.length;
+            onlineUsersListDiv.innerHTML = '';
+            users.forEach(function(name) {
+                const tag = document.createElement('span');
+                tag.className = 'online-user-tag';
+                tag.textContent = name;
+                onlineUsersListDiv.appendChild(tag);
+            });
+        });
+
+        // 昵称修改时同步更新在线状态
+        nicknameInput.addEventListener('change', function() {
+            const nickname = this.value.trim() || '匿名用户';
+            localStorage.setItem('nickname', nickname);
+            socket.emit('setNickname', nickname);
+        });
+
+        // ===== 消息发送 =====
         function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
-            const nickname = nicknameInput.value || '匿名用户';
 
+            const nickname = localStorage.getItem('nickname') || '匿名用户';
             const message = {
+                sender: nickname,
                 text: text,
-                nickname: nickname,
-                timestamp: new Date().toISOString()
+                time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
             };
 
-            // 先保存到本地
-            const history = loadHistory();
-            history.push(message);
-            saveHistory(history);
-
-            // 再通过 Socket.IO 广播
+            // 发送到服务器
             socket.emit('chatMessage', message);
 
+            // 清空输入框
             messageInput.value = '';
+            messageInput.focus();
         }
 
         sendBtn.addEventListener('click', sendMessage);
+
         messageInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') sendMessage();
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
         });
 
-        // ===== 接收其他用户的消息 =====
-        socket.on('chatMessage', function(data) {
-            // 保存到本地
-            const history = loadHistory();
-            history.push(data);
-            saveHistory(history);
-
-            // 渲染消息
-            appendMessage(data);
+        // ===== 接收消息 =====
+        socket.on('chatMessage', function(message) {
+            const isOwn = message.sender === (localStorage.getItem('nickname') || '匿名用户');
+            appendMessage(message, isOwn);
         });
 
-        // ===== 昵称持久化 =====
-        nicknameInput.addEventListener('change', function() {
-            localStorage.setItem('nickname', this.value);
-        });
+        // ===== 渲染消息 =====
+        function appendMessage(message, isOwn) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message' + (isOwn ? ' own' : '');
 
-        // 恢复昵称
-        const savedNickname = localStorage.getItem('nickname');
-        if (savedNickname) nicknameInput.value = savedNickname;
+            // 头像（统一显示笑脸）
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'message-avatar';
+            avatarDiv.textContent = '😊';
+
+            // 消息内容
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+
+            const senderDiv = document.createElement('div');
+            senderDiv.className = 'message-sender';
+            senderDiv.textContent = message.sender;
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'message-text';
+            textDiv.textContent = message.text;
+
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = message.time;
+
+            contentDiv.appendChild(senderDiv);
+            contentDiv.appendChild(textDiv);
+            contentDiv.appendChild(timeDiv);
+
+            msgDiv.appendChild(avatarDiv);
+            msgDiv.appendChild(contentDiv);
+
+            messagesArea.appendChild(msgDiv);
+
+            // 自动滚动到底部
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        // ===== 本地聊天记录（localStorage） =====
+        const HISTORY_KEY = 'chatHistory';
+        const MAX_HISTORY = 200;
+
+        // 页面加载时读取历史记录
+        function loadHistory() {
+            try {
+                const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+                history.forEach(function(msg) {
+                    const isOwn = msg.sender === (localStorage.getItem('nickname') || '匿名用户');
+                    appendMessage(msg, isOwn);
+                });
+            } catch (e) {
+                console.error('读取历史记录失败:', e);
+            }
+        }
+
+        // 保存消息到本地
+        function saveToHistory(message) {
+            try {
+                let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+                history.push(message);
+                // 只保留最近 200 条
+                if (history.length > MAX_HISTORY) {
+                    history = history.slice(history.length - MAX_HISTORY);
+                }
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            } catch (e) {
+                console.error('保存历史记录失败:', e);
+            }
+        }
+
+        // 加载历史记录
+        loadHistory();
+
+        // 收到消息时同时保存到本地
+        socket.on('chatMessage', function(message) {
+            const isOwn = message.sender === (localStorage.getItem('nickname') || '匿名用户');
+            appendMessage(message, isOwn);
+            saveToHistory(message);
+        });
     </script>
 </body>
 </html>
