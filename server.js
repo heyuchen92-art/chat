@@ -1,83 +1,56 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const port = process.env.PORT || 3000;
-
-// 静态文件服务
+// 静态文件服务：托管 index.html 和 style.css
 app.use(express.static(__dirname));
 
-// 健康检查端点
+// 健康检查端点（Render 平台需要）
 app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+    res.status(200).send('OK');
 });
 
-// 聊天记录存储（内存中，重启后丢失）
-// 如需永久保存，可改用文件或数据库
+// 内存存储聊天记录（最多 200 条）
 const messageHistory = [];
-const MAX_HISTORY = 200; // 最多保存200条
-
-// 在线用户管理
-let onlineUsers = 0;
 
 io.on('connection', (socket) => {
-  onlineUsers++;
-  io.emit('userCount', onlineUsers);
+    console.log('新用户连接:', socket.id);
 
-  // 新用户连接时，发送历史聊天记录
-  socket.emit('history', messageHistory);
+    // 发送历史记录给新连接的用户
+    socket.emit('history', messageHistory);
 
-  // 用户加入通知
-  socket.on('userJoined', (username) => {
-    socket.broadcast.emit('systemMessage', `${username} 加入了聊天室`);
-  });
+    // 接收聊天消息并广播
+    socket.on('chatMessage', (data) => {
+        const message = {
+            text: data.text,
+            nickname: data.nickname || '匿名用户',
+            avatar: data.avatar || '😀',
+            timestamp: new Date().toISOString()
+        };
 
-  // 接收并广播文本消息
-  socket.on('chatMessage', (data) => {
-    // 存储到历史记录
-    const msg = {
-      type: 'text',
-      username: data.username,
-      avatar: data.avatar,
-      text: data.text,
-      time: Date.now()
-    };
-    messageHistory.push(msg);
-    // 限制历史记录长度
-    if (messageHistory.length > MAX_HISTORY) {
-      messageHistory.shift();
-    }
-    // 广播给所有用户
-    io.emit('chatMessage', msg);
-  });
+        // 保存到历史记录（最多 200 条）
+        messageHistory.push(message);
+        if (messageHistory.length > 200) {
+            messageHistory.shift();
+        }
 
-  // 接收并广播图片消息
-  socket.on('imageMessage', (data) => {
-    const msg = {
-      type: 'image',
-      username: data.username,
-      avatar: data.avatar,
-      image: data.image,
-      time: Date.now()
-    };
-    messageHistory.push(msg);
-    if (messageHistory.length > MAX_HISTORY) {
-      messageHistory.shift();
-    }
-    io.emit('imageMessage', msg);
-  });
+        // 广播给所有客户端
+        io.emit('chatMessage', message);
+    });
 
-  // 用户断开连接
-  socket.on('disconnect', () => {
-    onlineUsers--;
-    io.emit('userCount', onlineUsers);
-  });
+    // 用户断开连接
+    socket.on('disconnect', () => {
+        console.log('用户断开:', socket.id);
+    });
 });
 
-server.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+// 端口配置（Render 平台使用环境变量 PORT）
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`服务器运行在 http://localhost:${PORT}`);
 });
