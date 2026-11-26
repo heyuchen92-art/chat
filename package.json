@@ -1,7 +1,7 @@
 {
-  "name": "chat-room",
+  "name": "chatroom",
   "version": "1.0.0",
-  "description": "A simple chat room with Socket.IO and persistent history",
+  "description": "实时聊天室（含管理员和禁言功能）",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
