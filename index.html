@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>聊天室</title>
-    <!-- CSS 直接内嵌在 HTML 中，不再依赖外部 style.css 文件 -->
     <style>
         /* ===== 全局重置 ===== */
         * {
@@ -23,7 +22,7 @@
             background: #f0f2f5;
         }
 
-        /* ===== 个人资料栏 ===== */
+        /* ===== 顶部昵称栏 ===== */
         .profile-bar {
             display: flex;
             align-items: center;
@@ -32,19 +31,6 @@
             background: #ffffff;
             border-bottom: 1px solid #e0e0e0;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-
-        #avatarPreview {
-            font-size: 36px;
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #e8f0fe;
-            border-radius: 50%;
-            border: 2px solid #4a90d9;
-            flex-shrink: 0;
         }
 
         #nicknameInput {
@@ -59,26 +45,6 @@
 
         #nicknameInput:focus {
             border-color: #4a90d9;
-        }
-
-        #avatarOptions {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-        }
-
-        .avatar-option {
-            font-size: 22px;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 50%;
-            transition: background 0.2s, transform 0.2s;
-            user-select: none;
-        }
-
-        .avatar-option:hover {
-            background: #e8f0fe;
-            transform: scale(1.2);
         }
 
         /* ===== 消息区域 ===== */
@@ -102,6 +68,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* 统一的笑脸头像 */
         .msg-avatar {
             font-size: 28px;
             width: 40px;
@@ -203,20 +170,9 @@
     </style>
 </head>
 <body>
-    <!-- 个人资料栏：昵称 + 预设头像选择 -->
+    <!-- 顶部昵称栏（已移除头像选择） -->
     <div class="profile-bar">
-        <span id="avatarPreview">😀</span>
         <input type="text" id="nicknameInput" placeholder="输入昵称">
-        <div id="avatarOptions">
-            <span class="avatar-option" data-avatar="😀">😀</span>
-            <span class="avatar-option" data-avatar="😎">😎</span>
-            <span class="avatar-option" data-avatar="🤖">🤖</span>
-            <span class="avatar-option" data-avatar="🐱">🐱</span>
-            <span class="avatar-option" data-avatar="🐶">🐶</span>
-            <span class="avatar-option" data-avatar="🦊">🦊</span>
-            <span class="avatar-option" data-avatar="🌸">🌸</span>
-            <span class="avatar-option" data-avatar="⭐">⭐</span>
-        </div>
     </div>
 
     <!-- 聊天消息区域 -->
@@ -228,13 +184,10 @@
         <button id="sendBtn">发送</button>
     </div>
 
-    <!-- 所有脚本放在 body 末尾，确保 DOM 已加载 -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // ===== 元素获取（此时 DOM 已完全加载，不会报 null 错误）=====
-        const avatarPreview = document.getElementById('avatarPreview');
+        // ===== 元素获取 =====
         const nicknameInput = document.getElementById('nicknameInput');
-        const avatarOptions = document.querySelectorAll('.avatar-option');
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
@@ -242,56 +195,41 @@
         // ===== Socket.IO 连接 =====
         const socket = io();
 
-        // ===== 预设头像选择 =====
-        avatarOptions.forEach(function(option) {
-            option.addEventListener('click', function() {
-                const avatar = this.getAttribute('data-avatar');
-                avatarPreview.textContent = avatar;
-                localStorage.setItem('avatar', avatar);
-            });
-        });
+        // ===== 本地存储键名 =====
+        const HISTORY_KEY = 'chatHistory';
+        const MAX_HISTORY = 200;
 
-        // ===== 昵称设置 =====
-        nicknameInput.addEventListener('change', function() {
-            localStorage.setItem('nickname', this.value);
-        });
-
-        // ===== 发送文本消息 =====
-        function sendMessage() {
-            const text = messageInput.value.trim();
-            if (!text) return;
-            const nickname = nicknameInput.value || '匿名用户';
-            const avatar = localStorage.getItem('avatar') || '😀';
-            socket.emit('chatMessage', { text, nickname, avatar });
-            messageInput.value = '';
+        // ===== 读取本地聊天记录 =====
+        function loadHistory() {
+            try {
+                const saved = localStorage.getItem(HISTORY_KEY);
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                console.error('读取本地记录失败:', e);
+                return [];
+            }
         }
 
-        sendBtn.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') sendMessage();
-        });
+        // ===== 保存聊天记录到本地 =====
+        function saveHistory(history) {
+            try {
+                // 只保留最近 200 条
+                const trimmed = history.slice(-MAX_HISTORY);
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+            } catch (e) {
+                console.error('保存本地记录失败:', e);
+            }
+        }
 
-        // ===== 接收消息 =====
-        socket.on('chatMessage', function(data) {
-            appendMessage(data);
-        });
-
-        // ===== 历史记录 =====
-        socket.on('history', function(history) {
-            history.forEach(function(msg) {
-                appendMessage(msg);
-            });
-        });
-
-        // ===== 渲染消息（使用 emoji 头像，避免 Base64 乱码）=====
+        // ===== 渲染消息（统一笑脸头像）=====
         function appendMessage(data) {
             const msgDiv = document.createElement('div');
             msgDiv.className = 'message';
 
-            // 头像直接用 emoji 文本显示，彻底避免 Base64 乱码问题
+            // 所有用户统一显示笑脸 😊
             const avatarSpan = document.createElement('span');
             avatarSpan.className = 'msg-avatar';
-            avatarSpan.textContent = data.avatar || '😀';
+            avatarSpan.textContent = '😊';
 
             const contentDiv = document.createElement('div');
             contentDiv.className = 'msg-content';
@@ -314,11 +252,59 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // ===== 恢复本地存储的昵称和头像 =====
+        // ===== 页面加载时显示本地历史记录 =====
+        const localHistory = loadHistory();
+        localHistory.forEach(function(msg) {
+            appendMessage(msg);
+        });
+
+        // ===== 发送消息 =====
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+            const nickname = nicknameInput.value || '匿名用户';
+
+            const message = {
+                text: text,
+                nickname: nickname,
+                timestamp: new Date().toISOString()
+            };
+
+            // 先保存到本地
+            const history = loadHistory();
+            history.push(message);
+            saveHistory(history);
+
+            // 再通过 Socket.IO 广播
+            socket.emit('chatMessage', message);
+
+            messageInput.value = '';
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // ===== 接收其他用户的消息 =====
+        socket.on('chatMessage', function(data) {
+            // 保存到本地
+            const history = loadHistory();
+            history.push(data);
+            saveHistory(history);
+
+            // 渲染消息
+            appendMessage(data);
+        });
+
+        // ===== 昵称持久化 =====
+        nicknameInput.addEventListener('change', function() {
+            localStorage.setItem('nickname', this.value);
+        });
+
+        // 恢复昵称
         const savedNickname = localStorage.getItem('nickname');
-        const savedAvatar = localStorage.getItem('avatar');
         if (savedNickname) nicknameInput.value = savedNickname;
-        if (savedAvatar) avatarPreview.textContent = savedAvatar;
     </script>
 </body>
 </html>
