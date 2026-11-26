@@ -7,11 +7,20 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 头像预览元素 -->
+    <!-- 个人资料栏：昵称 + 预设头像选择 -->
     <div class="profile-bar">
         &lt;img id="avatarPreview" src="data:image/svg+xml;base64,..." alt="头像预览"&gt;
-        <input type="file" id="avatarInput" accept="image/*">
         <input type="text" id="nicknameInput" placeholder="输入昵称">
+        <div id="avatarOptions">
+            <span class="avatar-option" data-avatar="😀">😀</span>
+            <span class="avatar-option" data-avatar="😎">😎</span>
+            <span class="avatar-option" data-avatar="🤖">🤖</span>
+            <span class="avatar-option" data-avatar="🐱">🐱</span>
+            <span class="avatar-option" data-avatar="🐶">🐶</span>
+            <span class="avatar-option" data-avatar="🦊">🦊</span>
+            <span class="avatar-option" data-avatar="🌸">🌸</span>
+            <span class="avatar-option" data-avatar="⭐">⭐</span>
+        </div>
     </div>
 
     <!-- 聊天消息区域 -->
@@ -21,39 +30,29 @@
     <div class="input-area">
         <input type="text" id="messageInput" placeholder="输入消息...">
         <button id="sendBtn">发送</button>
-        <input type="file" id="imageInput" accept="image/*">
     </div>
 
-    <!-- 所有脚本放在 body 末尾 -->
+    <!-- 所有脚本放在 body 末尾，确保 DOM 已加载 -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // ===== 元素获取（此时 DOM 已完全加载）=====
+        // ===== 元素获取（此时 DOM 已完全加载，不会报 null 错误）=====
         const avatarPreview = document.getElementById('avatarPreview');
-        const avatarInput = document.getElementById('avatarInput');
         const nicknameInput = document.getElementById('nicknameInput');
+        const avatarOptions = document.querySelectorAll('.avatar-option');
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
-        const imageInput = document.getElementById('imageInput');
 
         // ===== Socket.IO 连接 =====
         const socket = io();
 
-        // ===== 头像上传与预览 =====
-        avatarInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            if (file.size > 2 * 1024 * 1024) {
-                alert('图片不能超过 2MB');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                // 此时 avatarPreview 一定存在，因为脚本在 body 末尾
-                avatarPreview.src = event.target.result;
-                localStorage.setItem('avatar', event.target.result);
-            };
-            reader.readAsDataURL(file);
+        // ===== 预设头像选择 =====
+        avatarOptions.forEach(function(option) {
+            option.addEventListener('click', function() {
+                const avatar = this.getAttribute('data-avatar');
+                avatarPreview.textContent = avatar; // 用 emoji 直接显示
+                localStorage.setItem('avatar', avatar);
+            });
         });
 
         // ===== 昵称设置 =====
@@ -66,7 +65,7 @@
             const text = messageInput.value.trim();
             if (!text) return;
             const nickname = nicknameInput.value || '匿名用户';
-            const avatar = localStorage.getItem('avatar') || '';
+            const avatar = localStorage.getItem('avatar') || '😀';
             socket.emit('chatMessage', { text, nickname, avatar });
             messageInput.value = '';
         }
@@ -76,55 +75,27 @@
             if (e.key === 'Enter') sendMessage();
         });
 
-        // ===== 发送图片消息 =====
-        imageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            if (file.size > 2 * 1024 * 1024) {
-                alert('图片不能超过 2MB');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const nickname = nicknameInput.value || '匿名用户';
-                const avatar = localStorage.getItem('avatar') || '';
-                socket.emit('sendChatImage', {
-                    image: event.target.result,
-                    nickname,
-                    avatar
-                });
-            };
-            reader.readAsDataURL(file);
-        });
-
         // ===== 接收消息 =====
         socket.on('chatMessage', function(data) {
             appendMessage(data);
         });
 
-        socket.on('sendChatImage', function(data) {
-            appendMessage(data, true);
-        });
-
         // ===== 历史记录 =====
         socket.on('history', function(history) {
             history.forEach(function(msg) {
-                appendMessage(msg, msg.image ? true : false);
+                appendMessage(msg);
             });
         });
 
         // ===== 渲染消息 =====
-        function appendMessage(data, isImage) {
+        function appendMessage(data) {
             const msgDiv = document.createElement('div');
             msgDiv.className = 'message';
 
-            const avatarImg = document.createElement('img');
-            avatarImg.className = 'msg-avatar';
-            avatarImg.src = data.avatar || 'data:image/svg+xml;base64,...';
-            // 图片加载失败时使用默认头像
-            avatarImg.onerror = function() {
-                this.src = 'data:image/svg+xml;base64,...';
-            };
+            // 头像直接用 emoji 文本显示，不需要 img 标签
+            const avatarSpan = document.createElement('span');
+            avatarSpan.className = 'msg-avatar';
+            avatarSpan.textContent = data.avatar || '😀';
 
             const contentDiv = document.createElement('div');
             contentDiv.className = 'msg-content';
@@ -135,21 +106,11 @@
 
             const textDiv = document.createElement('div');
             textDiv.className = 'msg-text';
-            if (isImage) {
-                const img = document.createElement('img');
-                img.className = 'msg-image';
-                img.src = data.image;
-                img.onerror = function() {
-                    this.src = 'data:image/svg+xml;base64,...';
-                };
-                textDiv.appendChild(img);
-            } else {
-                textDiv.textContent = data.text;
-            }
+            textDiv.textContent = data.text;
 
             contentDiv.appendChild(nameSpan);
             contentDiv.appendChild(textDiv);
-            msgDiv.appendChild(avatarImg);
+            msgDiv.appendChild(avatarSpan);
             msgDiv.appendChild(contentDiv);
             messagesDiv.appendChild(msgDiv);
 
@@ -161,7 +122,7 @@
         const savedNickname = localStorage.getItem('nickname');
         const savedAvatar = localStorage.getItem('avatar');
         if (savedNickname) nicknameInput.value = savedNickname;
-        if (savedAvatar) avatarPreview.src = savedAvatar;
+        if (savedAvatar) avatarPreview.textContent = savedAvatar;
     </script>
 </body>
 </html>
