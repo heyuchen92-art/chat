@@ -12,8 +12,7 @@ const PORT = process.env.PORT || 3000;
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
 
 // 管理员配置（可修改）
-const ADMIN_PASSWORD = 'admin123';  // 管理员密码，首次进入时验证
-const ADMIN_NICKNAMES = ['admin', '管理员'];  // 管理员昵称列表（可选）
+const ADMIN_PASSWORD = 'admin123';  // 管理员密码
 
 // 读取历史消息
 function loadMessages() {
@@ -78,6 +77,20 @@ io.on('connection', (socket) => {
           targetSocket.emit('system message', '🔊 你的禁言已解除');
         }
       }, duration * 1000);
+    }
+  });
+
+  // 永久禁言（只有管理员可以调用）
+  socket.on('mute user permanent', (targetSocketId) => {
+    if (!socket.isAdmin) {
+      socket.emit('system message', '❌ 只有管理员才能禁言用户');
+      return;
+    }
+    mutedUsers.add(targetSocketId);
+    const targetSocket = io.sockets.sockets.get(targetSocketId);
+    if (targetSocket) {
+      targetSocket.emit('system message', '🔇 你已被永久禁言');
+      io.emit('system message', `🔇 ${targetSocket.nickname} 已被永久禁言`);
     }
   });
 
