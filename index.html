@@ -35,6 +35,23 @@
       font-size: 18px;
       font-weight: bold;
       text-align: center;
+      position: relative;
+    }
+    #changeNameButton {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: 1px solid #fff;
+      color: #fff;
+      border-radius: 5px;
+      padding: 3px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    #changeNameButton:hover {
+      background: rgba(255, 255, 255, 0.2);
     }
     #messages {
       flex: 1;
@@ -98,7 +115,10 @@
 </head>
 <body>
   <div id="chat">
-    <div id="chat-header">💬 聊天室</div>
+    <div id="chat-header">
+      💬 聊天室
+      <button id="changeNameButton">修改昵称</button>
+    </div>
     <div id="messages"></div>
     <div id="input-area">
       <input id="messageInput" type="text" placeholder="输入消息..." autocomplete="off">
@@ -115,6 +135,7 @@
     const messagesDiv = document.getElementById('messages');
     const messageInput = document.getElementById('messageInput');
     const sendButton = document.getElementById('sendButton');
+    const changeNameButton = document.getElementById('changeNameButton');
 
     // 设置昵称（从 localStorage 读取，或让用户输入）
     let nickname = localStorage.getItem('nickname');
@@ -123,6 +144,19 @@
       localStorage.setItem('nickname', nickname);
     }
     socket.emit('set nickname', nickname);
+
+    // 修改昵称按钮点击事件
+    changeNameButton.onclick = () => {
+      const newNickname = prompt('请输入新的昵称：', nickname);
+      if (newNickname && newNickname.trim()) {
+        nickname = newNickname.trim();
+        // 保存到 localStorage
+        localStorage.setItem('nickname', nickname);
+        // 通知服务器更新昵称
+        socket.emit('set nickname', nickname);
+        alert('昵称已修改为：' + nickname);
+      }
+    };
 
     // 1. 接收服务器发送的历史消息
     socket.on('allMessages', (messages) => {
