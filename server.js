@@ -1,68 +1,50 @@
 const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+
 const app = express();
-const server = require('http').createServer(app);
-const io = require('socket.io')(server);
+const server = http.createServer(app);
+const io = socketIo(server);
 
-// 提供静态文件服务
-app.use(express.static('public'));
+const port = process.env.PORT || 3000;
 
-// 健康检查端点
+// 静态文件服务 - 直接使用当前文件夹
+app.use(express.static(__dirname));
+
+// 健康检查端点（Render 需要）
 app.get('/health', (req, res) => {
-  res.send('OK');
+  res.status(200).send('OK');
 });
 
-// 存储在线用户
-const onlineUsers = new Map();
+// 在线用户管理
+let onlineUsers = 0;
 
 io.on('connection', (socket) => {
-  console.log('客户端已连接:', socket.id);
+  onlineUsers++;
+  io.emit('userCount', onlineUsers);
 
-  // 用户加入聊天室
-  socket.on('join', (userData) => {
-    onlineUsers.set(socket.id, userData);
-    socket.broadcast.emit('userJoined', {
-      username: userData.username,
-      onlineCount: onlineUsers.size
-    });
-    io.emit('onlineCount', onlineUsers.size);
+  // 用户加入通知
+  socket.on('userJoined', (username) => {
+    socket.broadcast.emit('systemMessage', `${username} 加入了聊天室`);
   });
 
-  // 发送文本消息
-  socket.on('chat message', (msg) => {
-    const user = onlineUsers.get(socket.id) || { username: '匿名用户' };
-    io.emit('chat message', {
-      username: user.username,
-      message: msg,
-      time: new Date().toLocaleTimeString()
-    });
+  // 接收并广播文本消息
+  socket.on('chatMessage', (data) => {
+    io.emit('chatMessage', data);
   });
 
-  // 发送图片消息（Base64）
-  socket.on('sendChatImage', (msgData) => {
-    const user = onlineUsers.get(socket.id) || { username: '匿名用户' };
-    io.emit('receiveChatImage', {
-      username: user.username,
-      imageContent: msgData.imageContent,
-      time: new Date().toLocaleTimeString()
-    });
+  // 接收并广播图片消息（Base64）
+  socket.on('imageMessage', (data) => {
+    io.emit('imageMessage', data);
   });
 
   // 用户断开连接
   socket.on('disconnect', () => {
-    const user = onlineUsers.get(socket.id);
-    if (user) {
-      onlineUsers.delete(socket.id);
-      socket.broadcast.emit('userLeft', {
-        username: user.username,
-        onlineCount: onlineUsers.size
-      });
-      io.emit('onlineCount', onlineUsers.size);
-    }
-    console.log('客户端已断开:', socket.id);
+    onlineUsers--;
+    io.emit('userCount', onlineUsers);
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
