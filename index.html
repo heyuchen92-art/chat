@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>聊天室</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Microsoft YaHei', Arial, sans-serif;
       background: #f0f2f5;
@@ -37,6 +33,19 @@
       text-align: center;
       position: relative;
     }
+    #adminButton {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: 1px solid #fff;
+      color: #fff;
+      border-radius: 5px;
+      padding: 3px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
     #changeNameButton {
       position: absolute;
       right: 15px;
@@ -50,9 +59,7 @@
       cursor: pointer;
       font-size: 12px;
     }
-    #changeNameButton:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
+    #adminButton:hover, #changeNameButton:hover { background: rgba(255, 255, 255, 0.2); }
     #messages {
       flex: 1;
       overflow-y: auto;
@@ -67,20 +74,19 @@
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
       word-break: break-word;
     }
-    .message .avatar {
-      font-size: 20px;
+    .message.admin-message { border-left: 3px solid #e74c3c; }
+    .message .avatar { font-size: 20px; margin-right: 5px; }
+    .message .nickname { font-weight: bold; color: #4a90d9; margin-right: 8px; }
+    .message .admin-badge {
+      background: #e74c3c;
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 3px;
       margin-right: 5px;
     }
-    .message .nickname {
-      font-weight: bold;
-      color: #4a90d9;
-      margin-right: 8px;
-    }
-    .message .time {
-      font-size: 11px;
-      color: #999;
-      float: right;
-    }
+    .message .time { font-size: 11px; color: #999; float: right; }
+    .message.system { background: #fff3cd; border-left: 3px solid #ffc107; }
     #input-area {
       display: flex;
       padding: 10px;
@@ -95,9 +101,7 @@
       font-size: 14px;
       outline: none;
     }
-    #messageInput:focus {
-      border-color: #4a90d9;
-    }
+    #messageInput:focus { border-color: #4a90d9; }
     #sendButton {
       margin-left: 10px;
       padding: 10px 20px;
@@ -108,8 +112,72 @@
       font-size: 14px;
       cursor: pointer;
     }
-    #sendButton:hover {
-      background: #357abd;
+    #sendButton:hover { background: #357abd; }
+    /* 管理员面板 */
+    #adminPanel {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      padding: 20px;
+    }
+    #adminPanel h3 { margin-bottom: 15px; color: #333; }
+    #adminPanel .user-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    #adminPanel .user-item button {
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    #adminPanel .user-item button.unmute { background: #27ae60; }
+    #adminPanel .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: #999;
+    }
+    #adminPanel .close-btn:hover { color: #333; }
+    #adminPanel .duration-select {
+      margin-left: 5px;
+      padding: 2px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    #adminPanel .login-form { text-align: center; padding: 20px 0; }
+    #adminPanel .login-form input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      width: 200px;
+    }
+    #adminPanel .login-form button {
+      padding: 8px 20px;
+      background: #4a90d9;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -117,6 +185,7 @@
   <div id="chat">
     <div id="chat-header">
       💬 聊天室
+      <button id="adminButton">👑 管理</button>
       <button id="changeNameButton">修改昵称</button>
     </div>
     <div id="messages"></div>
@@ -126,18 +195,35 @@
     </div>
   </div>
 
-  <!-- 引入 Socket.IO 客户端库（必须） -->
+  <!-- 管理员面板 -->
+  <div id="adminPanel">
+    <button class="close-btn" onclick="closeAdminPanel()">✕</button>
+    <h3>👑 管理员面板</h3>
+    <div id="adminLoginForm" class="login-form">
+      <p>请输入管理员密码：</p>
+      <input type="password" id="adminPassword" placeholder="管理员密码">
+      <br>
+      <button onclick="adminLogin()">登录</button>
+    </div>
+    <div id="adminContent" style="display: none;">
+      <p style="margin-bottom: 10px; color: #666;">在线用户列表：</p>
+      <div id="userList"></div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // 连接服务器
     const socket = io();
-
     const messagesDiv = document.getElementById('messages');
     const messageInput = document.getElementById('messageInput');
     const sendButton = document.getElementById('sendButton');
     const changeNameButton = document.getElementById('changeNameButton');
+    const adminButton = document.getElementById('adminButton');
+    const adminPanel = document.getElementById('adminPanel');
+    const adminLoginForm = document.getElementById('adminLoginForm');
+    const adminContent = document.getElementById('adminContent');
+    const userListDiv = document.getElementById('userList');
 
-    // 设置昵称（从 localStorage 读取，或让用户输入）
     let nickname = localStorage.getItem('nickname');
     if (!nickname) {
       nickname = prompt('请输入你的昵称：') || '匿名用户';
@@ -145,37 +231,110 @@
     }
     socket.emit('set nickname', nickname);
 
-    // 修改昵称按钮点击事件
+    // 修改昵称
     changeNameButton.onclick = () => {
       const newNickname = prompt('请输入新的昵称：', nickname);
       if (newNickname && newNickname.trim()) {
         nickname = newNickname.trim();
-        // 保存到 localStorage
         localStorage.setItem('nickname', nickname);
-        // 通知服务器更新昵称
         socket.emit('set nickname', nickname);
         alert('昵称已修改为：' + nickname);
       }
     };
 
-    // 1. 接收服务器发送的历史消息
+    // 打开管理员面板
+    adminButton.onclick = () => {
+      adminPanel.style.display = 'block';
+      // 请求在线用户列表
+      socket.emit('get users');
+    };
+
+    // 关闭管理员面板
+    function closeAdminPanel() {
+      adminPanel.style.display = 'none';
+    }
+
+    // 管理员登录
+    function adminLogin() {
+      const password = document.getElementById('adminPassword').value;
+      socket.emit('admin login', password);
+    }
+
+    // 管理员登录成功
+    socket.on('admin login success', () => {
+      adminLoginForm.style.display = 'none';
+      adminContent.style.display = 'block';
+      alert('✅ 管理员登录成功！');
+    });
+
+    // 管理员登录失败
+    socket.on('admin login fail', (msg) => {
+      alert('❌ ' + msg);
+    });
+
+    // 接收在线用户列表
+    socket.on('users list', (users) => {
+      userListDiv.innerHTML = '';
+      users.forEach(user => {
+        if (user.id === socket.id) return;  // 不显示自己
+        const div = document.createElement('div');
+        div.className = 'user-item';
+        div.innerHTML = `
+          <span>${user.nickname} ${user.isAdmin ? '👑' : ''}</span>
+          <span>
+            <select class="duration-select" id="duration-${user.id}">
+              <option value="10">10秒</option>
+              <option value="60">1分钟</option>
+              <option value="300">5分钟</option>
+              <option value="600">10分钟</option>
+            </select>
+            <button onclick="muteUser('${user.id}')">禁言</button>
+            <button class="unmute" onclick="unmuteUser('${user.id}')">解除</button>
+          </span>
+        `;
+        userListDiv.appendChild(div);
+      });
+    });
+
+    // 禁言用户
+    function muteUser(targetId) {
+      const duration = document.getElementById('duration-' + targetId).value;
+      socket.emit('mute user', targetId, parseInt(duration));
+    }
+
+    // 解除禁言
+    function unmuteUser(targetId) {
+      socket.emit('unmute user', targetId);
+    }
+
+    // 接收系统消息
+    socket.on('system message', (msg) => {
+      const div = document.createElement('div');
+      div.className = 'message system';
+      div.textContent = msg;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    // 接收历史消息
     socket.on('allMessages', (messages) => {
       messagesDiv.innerHTML = '';
       messages.forEach(msg => {
         const div = document.createElement('div');
         div.className = 'message';
-        div.textContent = msg;  // 历史消息是字符串格式
+        div.textContent = msg;
         messagesDiv.appendChild(div);
       });
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    // 2. 接收服务器广播的新消息（对象格式）
+    // 接收新消息
     socket.on('chat message', (data) => {
       const div = document.createElement('div');
-      div.className = 'message';
+      div.className = 'message' + (data.isAdmin ? ' admin-message' : '');
       div.innerHTML = `
         <span class="avatar">${data.avatar}</span>
+        ${data.isAdmin ? '<span class="admin-badge">管理员</span>' : ''}
         <span class="nickname">${data.nickname}:</span>
         <span class="time">${data.time}</span>
         <br>${data.text}
@@ -184,7 +343,7 @@
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    // 3. 点击发送按钮
+    // 发送消息
     sendButton.onclick = () => {
       const msg = messageInput.value.trim();
       if (msg) {
@@ -194,7 +353,6 @@
       }
     };
 
-    // 4. 按回车键发送
     messageInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         sendButton.click();
