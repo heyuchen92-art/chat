@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// 静态文件服务：托管 index.html 和 style.css
+// 静态文件服务：托管 index.html、style.css 等文件
 app.use(express.static(__dirname));
 
 // 健康检查端点（Render 平台需要）
