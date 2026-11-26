@@ -120,7 +120,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 400px;
+      width: 450px;
       background: #fff;
       border-radius: 10px;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
@@ -178,6 +178,15 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
+    }
+    .custom-duration {
+      display: none;
+      width: 60px;
+      padding: 2px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      font-size: 12px;
+      margin-left: 5px;
     }
   </style>
 </head>
@@ -245,7 +254,6 @@
     // 打开管理员面板
     adminButton.onclick = () => {
       adminPanel.style.display = 'block';
-      // 请求在线用户列表
       socket.emit('get users');
     };
 
@@ -287,19 +295,53 @@
               <option value="60">1分钟</option>
               <option value="300">5分钟</option>
               <option value="600">10分钟</option>
+              <option value="3600">1小时</option>
+              <option value="86400">24小时</option>
+              <option value="custom">自定义...</option>
+              <option value="permanent">永久禁言</option>
             </select>
+            <input type="number" class="custom-duration" id="custom-${user.id}" 
+                   placeholder="秒数" min="1" style="display:none; width:60px; padding:2px; border:1px solid #ddd; border-radius:3px;">
             <button onclick="muteUser('${user.id}')">禁言</button>
             <button class="unmute" onclick="unmuteUser('${user.id}')">解除</button>
           </span>
         `;
         userListDiv.appendChild(div);
+
+        // 监听下拉框变化，选择"自定义"时显示输入框
+        const select = document.getElementById('duration-' + user.id);
+        const customInput = document.getElementById('custom-' + user.id);
+        select.addEventListener('change', () => {
+          if (select.value === 'custom') {
+            customInput.style.display = 'inline-block';
+          } else {
+            customInput.style.display = 'none';
+          }
+        });
       });
     });
 
-    // 禁言用户
+    // 禁言用户（支持自定义时长和永久禁言）
     function muteUser(targetId) {
-      const duration = document.getElementById('duration-' + targetId).value;
-      socket.emit('mute user', targetId, parseInt(duration));
+      const select = document.getElementById('duration-' + targetId);
+      const customInput = document.getElementById('custom-' + targetId);
+      let duration;
+
+      if (select.value === 'custom') {
+        // 使用自定义输入框的值（秒）
+        duration = parseInt(customInput.value);
+        if (!duration || duration < 1) {
+          alert('请输入有效的禁言秒数（至少1秒）');
+          return;
+        }
+        socket.emit('mute user', targetId, duration);
+      } else if (select.value === 'permanent') {
+        // 永久禁言
+        socket.emit('mute user permanent', targetId);
+      } else {
+        duration = parseInt(select.value);
+        socket.emit('mute user', targetId, duration);
+      }
     }
 
     // 解除禁言
