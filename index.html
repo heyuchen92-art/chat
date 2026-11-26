@@ -1,249 +1,167 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>聊天室</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Microsoft YaHei', sans-serif; background: #f0f2f5; }
-    .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-    .header { background: #4a90d9; color: white; padding: 15px 20px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
-    .chat-box { background: white; border: 1px solid #ddd; height: 450px; overflow-y: auto; padding: 15px; }
-    .message { margin-bottom: 10px; padding: 8px 12px; border-radius: 8px; max-width: 70%; display: flex; align-items: flex-start; gap: 8px; }
-    .message.self { background: #4a90d9; color: white; margin-left: auto; flex-direction: row-reverse; }
-    .message.other { background: #e9ecef; margin-right: auto; }
-    .message.system { background: #fff3cd; text-align: center; font-size: 14px; color: #856404; margin: 5px auto; justify-content: center; }
-    .message img.avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-    .message .content-wrapper { display: flex; flex-direction: column; }
-    .message .username { font-size: 12px; color: #666; margin-bottom: 3px; }
-    .message.self .username { color: #e0e0e0; }
-    .message img.content-img { max-width: 200px; max-height: 200px; border-radius: 4px; display: block; margin-top: 5px; }
-    .input-area { display: flex; gap: 10px; padding: 15px; background: white; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px; }
-    .input-area input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-    .input-area button { padding: 10px 20px; background: #4a90d9; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .input-area button:hover { background: #357abd; }
-    .input-area input[type="file"] { display: none; }
-    .upload-btn { background: #28a745 !important; }
-    .upload-btn:hover { background: #218838 !important; }
-    .profile-bar { background: white; border: 1px solid #ddd; border-bottom: none; padding: 10px 15px; display: flex; align-items: center; gap: 10px; }
-    .profile-bar img { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; object-fit: cover; }
-    .profile-bar input[type="text"] { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-    .profile-bar button { padding: 8px 15px; background: #4a90d9; color: white; border: none; border-radius: 4px; cursor: pointer; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天室</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h3>聊天室</h3>
-      <span>在线人数: <span id="userCount">0</span></span>
-    </div>
-    <!-- 昵称和头像设置栏 -->
+    <!-- 头像预览元素 -->
     <div class="profile-bar">
-      &lt;img id="avatarPreview" src="" alt="头像" onclick="document.getElementById('avatarInput').click()" title="点击更换头像"&gt;
-      <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="changeAvatar(this)">
-      <input type="text" id="nicknameInput" placeholder="输入昵称...">
-      <button onclick="saveProfile()">保存</button>
+        &lt;img id="avatarPreview" src="data:image/svg+xml;base64,..." alt="头像预览"&gt;
+        <input type="file" id="avatarInput" accept="image/*">
+        <input type="text" id="nicknameInput" placeholder="输入昵称">
     </div>
-    <div class="chat-box" id="chatBox"></div>
+
+    <!-- 聊天消息区域 -->
+    <div id="messages"></div>
+
+    <!-- 消息输入区域 -->
     <div class="input-area">
-      <input type="text" id="messageInput" placeholder="输入消息...">
-      <button onclick="sendMessage()">发送</button>
-      <button class="upload-btn" onclick="document.getElementById('imageInput').click()">📷 图片</button>
-      <input type="file" id="imageInput" accept="image/*" onchange="sendImage(this)">
+        <input type="text" id="messageInput" placeholder="输入消息...">
+        <button id="sendBtn">发送</button>
+        <input type="file" id="imageInput" accept="image/*">
     </div>
-  </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    const chatBox = document.getElementById('chatBox');
-    const messageInput = document.getElementById('messageInput');
-    const userCount = document.getElementById('userCount');
-    const avatarPreview = document.getElementById('avatarPreview');
-    const nicknameInput = document.getElementById('nicknameInput');
+    <!-- 所有脚本放在 body 末尾 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // ===== 元素获取（此时 DOM 已完全加载）=====
+        const avatarPreview = document.getElementById('avatarPreview');
+        const avatarInput = document.getElementById('avatarInput');
+        const nicknameInput = document.getElementById('nicknameInput');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const imageInput = document.getElementById('imageInput');
 
-    // 默认头像（蓝色占位图）
-    const DEFAULT_AVATAR = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDgwIDgwIj48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiM0YTkwZDkiLz48dGV4dCB4PSI0MCIgeT0iNDgiIGZvbnQtc2l6ZT0iMzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIj7jgII8L3RleHQ+PC9zdmc+';
+        // ===== Socket.IO 连接 =====
+        const socket = io();
 
-    // 从 localStorage 读取用户信息
-    let username = localStorage.getItem('username') || '';
-    let avatar = localStorage.getItem('avatar') || DEFAULT_AVATAR;
+        // ===== 头像上传与预览 =====
+        avatarInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                alert('图片不能超过 2MB');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                // 此时 avatarPreview 一定存在，因为脚本在 body 末尾
+                avatarPreview.src = event.target.result;
+                localStorage.setItem('avatar', event.target.result);
+            };
+            reader.readAsDataURL(file);
+        });
 
-    // 初始化显示
-    avatarPreview.src = avatar;
-    nicknameInput.value = username;
+        // ===== 昵称设置 =====
+        nicknameInput.addEventListener('change', function() {
+            localStorage.setItem('nickname', this.value);
+        });
 
-    // 如果没有昵称，提示用户设置
-    if (!username) {
-      alert('请先设置你的昵称和头像！');
-    } else {
-      socket.emit('userJoined', username);
-    }
-
-    // 接收历史聊天记录（连接后自动触发）
-    socket.on('history', (history) => {
-      chatBox.innerHTML = '';
-      history.forEach((msg) => {
-        if (msg.type === 'text') {
-          const isSelf = msg.username === username;
-          addMessage(msg.text, isSelf ? 'self' : 'other', msg.username, msg.avatar);
-        } else if (msg.type === 'image') {
-          const isSelf = msg.username === username;
-          addImage(msg.image, isSelf ? 'self' : 'other', msg.username, msg.avatar);
+        // ===== 发送文本消息 =====
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+            const nickname = nicknameInput.value || '匿名用户';
+            const avatar = localStorage.getItem('avatar') || '';
+            socket.emit('chatMessage', { text, nickname, avatar });
+            messageInput.value = '';
         }
-      });
-      chatBox.scrollTop = chatBox.scrollHeight;
-    });
 
-    // 更换头像
-    function changeAvatar(input) {
-      const file = input.files[0];
-      if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-        alert('头像大小不能超过2MB');
-        input.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        avatar = e.target.result;
-        avatarPreview.src = avatar;
-      };
-      reader.readAsDataURL(file);
-    }
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
 
-    // 保存昵称和头像
-    function saveProfile() {
-      const newName = nicknameInput.value.trim();
-      if (!newName) {
-        alert('昵称不能为空！');
-        return;
-      }
-      username = newName;
-      localStorage.setItem('username', username);
-      localStorage.setItem('avatar', avatar);
-      socket.emit('userJoined', username);
-      alert('昵称和头像已保存！');
-    }
+        // ===== 发送图片消息 =====
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                alert('图片不能超过 2MB');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const nickname = nicknameInput.value || '匿名用户';
+                const avatar = localStorage.getItem('avatar') || '';
+                socket.emit('sendChatImage', {
+                    image: event.target.result,
+                    nickname,
+                    avatar
+                });
+            };
+            reader.readAsDataURL(file);
+        });
 
-    // 更新在线人数
-    socket.on('userCount', (count) => {
-      userCount.textContent = count;
-    });
+        // ===== 接收消息 =====
+        socket.on('chatMessage', function(data) {
+            appendMessage(data);
+        });
 
-    // 接收系统消息
-    socket.on('systemMessage', (msg) => {
-      addMessage(msg, 'system');
-    });
+        socket.on('sendChatImage', function(data) {
+            appendMessage(data, true);
+        });
 
-    // 接收文本消息
-    socket.on('chatMessage', (data) => {
-      const isSelf = data.username === username;
-      addMessage(data.text, isSelf ? 'self' : 'other', data.username, data.avatar);
-    });
+        // ===== 历史记录 =====
+        socket.on('history', function(history) {
+            history.forEach(function(msg) {
+                appendMessage(msg, msg.image ? true : false);
+            });
+        });
 
-    // 接收图片消息
-    socket.on('imageMessage', (data) => {
-      const isSelf = data.username === username;
-      addImage(data.image, isSelf ? 'self' : 'other', data.username, data.avatar);
-    });
+        // ===== 渲染消息 =====
+        function appendMessage(data, isImage) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message';
 
-    // 发送文本消息
-    function sendMessage() {
-      const text = messageInput.value.trim();
-      if (text && username) {
-        socket.emit('chatMessage', { username, avatar, text });
-        messageInput.value = '';
-      } else {
-        alert('请先设置昵称！');
-      }
-    }
+            const avatarImg = document.createElement('img');
+            avatarImg.className = 'msg-avatar';
+            avatarImg.src = data.avatar || 'data:image/svg+xml;base64,...';
+            // 图片加载失败时使用默认头像
+            avatarImg.onerror = function() {
+                this.src = 'data:image/svg+xml;base64,...';
+            };
 
-    // 发送图片（Base64）
-    function sendImage(input) {
-      const file = input.files[0];
-      if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-        alert('图片大小不能超过2MB');
-        input.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        socket.emit('imageMessage', { username, avatar, image: e.target.result });
-        input.value = '';
-      };
-      reader.readAsDataURL(file);
-    }
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'msg-content';
 
-    // 添加消息到聊天框（含头像）
-    function addMessage(text, type, username, avatar) {
-      const div = document.createElement('div');
-      div.className = 'message ' + type;
-      
-      if (type !== 'system') {
-        const avatarImg = document.createElement('img');
-        avatarImg.className = 'avatar';
-        avatarImg.src = avatar || DEFAULT_AVATAR;
-        div.appendChild(avatarImg);
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = 'content-wrapper';
-        if (username) {
-          const nameDiv = document.createElement('div');
-          nameDiv.className = 'username';
-          nameDiv.textContent = username;
-          wrapper.appendChild(nameDiv);
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'msg-name';
+            nameSpan.textContent = data.nickname || '匿名用户';
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'msg-text';
+            if (isImage) {
+                const img = document.createElement('img');
+                img.className = 'msg-image';
+                img.src = data.image;
+                img.onerror = function() {
+                    this.src = 'data:image/svg+xml;base64,...';
+                };
+                textDiv.appendChild(img);
+            } else {
+                textDiv.textContent = data.text;
+            }
+
+            contentDiv.appendChild(nameSpan);
+            contentDiv.appendChild(textDiv);
+            msgDiv.appendChild(avatarImg);
+            msgDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(msgDiv);
+
+            // 自动滚动到底部
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-        const textDiv = document.createElement('div');
-        textDiv.textContent = text;
-        wrapper.appendChild(textDiv);
-        div.appendChild(wrapper);
-      } else {
-        div.textContent = text;
-      }
-      
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
 
-    // 添加图片到聊天框（含头像）
-    function addImage(imageData, type, username, avatar) {
-      const div = document.createElement('div');
-      div.className = 'message ' + type;
-      
-      if (type !== 'system') {
-        const avatarImg = document.createElement('img');
-        avatarImg.className = 'avatar';
-        avatarImg.src = avatar || DEFAULT_AVATAR;
-        div.appendChild(avatarImg);
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = 'content-wrapper';
-        if (username) {
-          const nameDiv = document.createElement('div');
-          nameDiv.className = 'username';
-          nameDiv.textContent = username;
-          wrapper.appendChild(nameDiv);
-        }
-        const img = document.createElement('img');
-        img.className = 'content-img';
-        img.src = imageData;
-        wrapper.appendChild(img);
-        div.appendChild(wrapper);
-      }
-      
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    // 回车发送
-    messageInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        sendMessage();
-      }
-    });
-  </script>
+        // ===== 恢复本地存储的昵称和头像 =====
+        const savedNickname = localStorage.getItem('nickname');
+        const savedAvatar = localStorage.getItem('avatar');
+        if (savedNickname) nicknameInput.value = savedNickname;
+        if (savedAvatar) avatarPreview.src = savedAvatar;
+    </script>
 </body>
 </html>
