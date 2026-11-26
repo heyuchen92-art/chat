@@ -1,45 +1,151 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>免费聊天室</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>私人聊天室</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 20px auto; padding: 0 10px; }
-    #messages { list-style: none; padding: 0; height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
-    #messages li { padding: 5px 0; border-bottom: 1px solid #eee; }
-    form { display: flex; margin-top: 10px; }
-    input { flex: 1; padding: 8px; }
-    button { padding: 8px 16px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 20px auto; padding: 0 12px; background: #f5f5f5; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; color: #555; }
+    .profile-bar { display: flex; gap: 8px; margin-bottom: 10px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    select, input { padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    #username { width: 120px; }
+    #messages { list-style: none; padding: 12px; height: 400px; overflow-y: auto; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 0; }
+    .msg-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+    .avatar { font-size: 26px; line-height: 1; background: #f0f2f5; padding: 6px; border-radius: 50%; }
+    .msg-content { background: #f0f2f5; padding: 8px 12px; border-radius: 10px; max-width: 80%; word-break: break-word; }
+    .msg-meta { font-size: 12px; color: #888; margin-bottom: 4px; }
+    .msg-text { font-size: 15px; color: #222; }
+    form { display: flex; gap: 8px; margin-top: 10px; }
+    #input { flex: 1; }
+    button { padding: 8px 16px; border: none; border-radius: 6px; background: #007bff; color: white; cursor: pointer; font-size: 14px; }
+    button:hover { background: #0056b3; }
+    .clear-btn { background: #dc3545; padding: 4px 10px; font-size: 12px; }
+    .clear-btn:hover { background: #a71d2a; }
   </style>
 </head>
 <body>
+  <div class="header">
+    <span id="status">🟡 正在连接服务器...</span>
+    <button type="button" class="clear-btn" onclick="clearHistory()">清空本地记录</button>
+  </div>
+
+  <!-- 头像与昵称设置栏 -->
+  <div class="profile-bar">
+    <select id="avatar" title="选择头像">
+      <option value="🐱">🐱 猫咪</option>
+      <option value="🐶">🐶 狗狗</option>
+      <option value="🦊">🦊 狐狸</option>
+      <option value="🐼">🐼 熊猫</option>
+      <option value="🐸">🐸 青蛙</option>
+      <option value="🤖">🤖 机器人</option>
+      <option value="👻">👻 幽灵</option>
+      <option value="👾">👾 外星人</option>
+    </select>
+    <input id="username" placeholder="输入你的昵称" maxlength="15" />
+    <span style="font-size: 12px; color: #888; align-self: center;">（自动保存在本地）</span>
+  </div>
+
+  <!-- 聊天记录列表 -->
   <ul id="messages"></ul>
+
+  <!-- 发送栏 -->
   <form id="form">
-    <input id="input" autocomplete="off" placeholder="输入消息..." />
-    <button>发送</button>
+    <input id="input" autocomplete="off" placeholder="输入消息并回车发送..." />
+    <button type="submit">发送</button>
   </form>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
+    const statusSpan = document.getElementById('status');
+    const avatarSelect = document.getElementById('avatar');
+    const usernameInput = document.getElementById('username');
+    const messagesList = document.getElementById('messages');
     const form = document.getElementById('form');
     const input = document.getElementById('input');
-    const messages = document.getElementById('messages');
 
+    // 1. 初始化加载本地保存的昵称、头像和历史记录
+    avatarSelect.value = localStorage.getItem('chat_avatar') || '🐱';
+    usernameInput.value = localStorage.getItem('chat_username') || '匿名用户' + Math.floor(Math.random() * 1000);
+    let chatHistory = JSON.parse(localStorage.getItem('chat_history') || '[]');
+
+    // 渲染单条消息到页面
+    function renderMessage(data) {
+      const li = document.createElement('li');
+      li.className = 'msg-item';
+      li.innerHTML = `
+        <div class="avatar">${data.avatar}</div>
+        <div class="msg-content">
+          <div class="msg-meta">${escapeHtml(data.name)} · ${data.time}</div>
+          <div class="msg-text">${escapeHtml(data.text)}</div>
+        </div>
+      `;
+      messagesList.appendChild(li);
+      messagesList.scrollTop = messagesList.scrollHeight;
+    }
+
+    // 防止 XSS 注入的安全转义函数
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // 页面打开时先渲染本地历史记录
+    chatHistory.forEach(renderMessage);
+
+    // 2. 监听昵称和头像修改，实时存入 localStorage
+    avatarSelect.addEventListener('change', () => {
+      localStorage.setItem('chat_avatar', avatarSelect.value);
+    });
+    usernameInput.addEventListener('input', () => {
+      localStorage.setItem('chat_username', usernameInput.value);
+    });
+
+    // 3. 连接状态监听
+    socket.on('connect', () => {
+      statusSpan.textContent = '🟢 已连接';
+    });
+    socket.on('disconnect', () => {
+      statusSpan.textContent = '🔴 连接断开，重连中...';
+    });
+
+    // 4. 发送消息
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (input.value) {
-        socket.emit('chat message', input.value);
-        input.value = '';
-      }
+      const text = input.value.trim();
+      if (!text) return;
+
+      const msgData = {
+        avatar: avatarSelect.value,
+        name: usernameInput.value.trim() || '匿名用户',
+        text: text,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      socket.emit('chat message', msgData);
+      input.value = '';
     });
 
-    socket.on('chat message', (msg) => {
-      const item = document.createElement('li');
-      item.textContent = msg;
-      messages.appendChild(item);
-      messages.scrollTop = messages.scrollHeight;
+    // 5. 接收消息并存入 localStorage（最多保留最近 200 条防卡顿）
+    socket.on('chat message', (msgData) => {
+      renderMessage(msgData);
+      chatHistory.push(msgData);
+      if (chatHistory.length > 200) {
+        chatHistory = chatHistory.slice(-200);
+      }
+      localStorage.setItem('chat_history', JSON.stringify(chatHistory));
     });
+
+    // 6. 清空本地记录功能
+    function clearHistory() {
+      if (confirm('确定要清空本地保存的聊天记录吗？')) {
+        localStorage.removeItem('chat_history');
+        chatHistory = [];
+        messagesList.innerHTML = '';
+      }
+    }
   </script>
 </body>
 </html>
