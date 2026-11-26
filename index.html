@@ -1,434 +1,62 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>聊天室</title>
-    <style>
-        /* ===== 全局重置 ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f0f2f5;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ===== 在线用户栏 ===== */
-        .online-users-bar {
-            background: #ffffff;
-            border-bottom: 1px solid #e0e0e0;
-            padding: 8px 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            flex-shrink: 0;
-        }
-
-        .online-label {
-            font-size: 13px;
-            font-weight: 600;
-            color: #333;
-            white-space: nowrap;
-        }
-
-        .online-users-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-
-        .online-user-tag {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            white-space: nowrap;
-        }
-
-        /* ===== 个人资料栏 ===== */
-        .profile-bar {
-            background: #ffffff;
-            border-bottom: 1px solid #e0e0e0;
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-shrink: 0;
-        }
-
-        .profile-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #4a90d9;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-
-        .profile-input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #d0d0d0;
-            border-radius: 8px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .profile-input:focus {
-            border-color: #4a90d9;
-        }
-
-        /* ===== 消息区域 ===== */
-        .messages-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: #f0f2f5;
-        }
-
-        .message {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            max-width: 80%;
-        }
-
-        .message-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #4a90d9;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            flex-shrink: 0;
-        }
-
-        .message-content {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 8px 12px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        }
-
-        .message-sender {
-            font-size: 12px;
-            font-weight: 600;
-            color: #4a90d9;
-            margin-bottom: 4px;
-        }
-
-        .message-text {
-            font-size: 14px;
-            color: #333;
-            word-break: break-word;
-        }
-
-        .message-time {
-            font-size: 11px;
-            color: #999;
-            margin-top: 4px;
-        }
-
-        /* 自己的消息靠右 */
-        .message.own {
-            flex-direction: row-reverse;
-            align-self: flex-end;
-        }
-
-        .message.own .message-content {
-            background: #4a90d9;
-            color: #ffffff;
-        }
-
-        .message.own .message-sender {
-            color: #ffffff;
-            text-align: right;
-        }
-
-        .message.own .message-text {
-            color: #ffffff;
-        }
-
-        .message.own .message-time {
-            color: rgba(255, 255, 255, 0.7);
-            text-align: right;
-        }
-
-        /* 消息淡入动画 */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message {
-            animation: fadeIn 0.3s ease;
-        }
-
-        /* ===== 输入区域 ===== */
-        .input-area {
-            background: #ffffff;
-            border-top: 1px solid #e0e0e0;
-            padding: 12px 16px;
-            display: flex;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .input-text {
-            flex: 1;
-            padding: 10px 14px;
-            border: 1px solid #d0d0d0;
-            border-radius: 20px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .input-text:focus {
-            border-color: #4a90d9;
-            box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.2);
-        }
-
-        .send-btn {
-            padding: 10px 20px;
-            background: #4a90d9;
-            color: #ffffff;
-            border: none;
-            border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-        }
-
-        .send-btn:hover {
-            background: #3a7bc8;
-        }
-
-        .send-btn:active {
-            transform: scale(0.95);
-        }
-
-        /* ===== 自定义滚动条 ===== */
-        .messages-area::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .messages-area::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .messages-area::-webkit-scrollbar-thumb {
-            background: #c0c0c0;
-            border-radius: 3px;
-        }
-
-        .messages-area::-webkit-scrollbar-thumb:hover {
-            background: #a0a0a0;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>聊天室</title>
+  <style>
+    /* 你的样式代码保持不变 */
+  </style>
 </head>
 <body>
+  <div id="chat">
+    <div id="messages"></div>
+    <input id="messageInput" type="text" placeholder="输入消息...">
+    <button id="sendButton">发送</button>
+  </div>
 
-    <!-- 在线用户栏 -->
-    <div class="online-users-bar">
-        <span class="online-label">🟢 在线用户 (<span id="onlineCount">0</span>)</span>
-        <div id="onlineUsersList" class="online-users-list"></div>
-    </div>
+  <!-- 引入 Socket.IO 客户端库（必须） -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // 连接服务器
+    const socket = io();
 
-    <!-- 个人资料栏 -->
-    <div class="profile-bar">
-        <div class="profile-avatar">😊</div>
-        <input type="text" id="nicknameInput" class="profile-input" placeholder="输入你的昵称..." maxlength="20">
-    </div>
+    const messagesDiv = document.getElementById('messages');
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
 
-    <!-- 消息区域 -->
-    <div id="messagesArea" class="messages-area"></div>
+    // 1. 接收服务器发送的历史消息（对应 server.js 的 socket.emit('allMessages', messages)）
+    socket.on('allMessages', (messages) => {
+      messagesDiv.innerHTML = '';  // 清空当前列表
+      messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.textContent = msg;
+        messagesDiv.appendChild(div);
+      });
+    });
 
-    <!-- 输入区域 -->
-    <div class="input-area">
-        <input type="text" id="messageInput" class="input-text" placeholder="输入消息，按回车发送..." maxlength="500">
-        <button id="sendBtn" class="send-btn">发送</button>
-    </div>
+    // 2. 接收服务器广播的新消息（对应 server.js 的 io.emit('chat message', msg)）
+    socket.on('chat message', (msg) => {
+      const div = document.createElement('div');
+      div.textContent = msg;
+      messagesDiv.appendChild(div);
+    });
 
-    <!-- Socket.IO 客户端库 -->
-    <script src="/socket.io/socket.io.js"></script>
+    // 3. 点击发送按钮，向服务器发送消息（对应 server.js 的 socket.on('chat message', ...)）
+    sendButton.onclick = () => {
+      const msg = messageInput.value.trim();
+      if (msg) {
+        socket.emit('chat message', msg);  // 事件名必须与 server.js 一致
+        messageInput.value = '';
+      }
+    };
 
-    <script>
-        // ===== 初始化 =====
-        const socket = io();
-        const messagesArea = document.getElementById('messagesArea');
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const nicknameInput = document.getElementById('nicknameInput');
-        const onlineCountSpan = document.getElementById('onlineCount');
-        const onlineUsersListDiv = document.getElementById('onlineUsersList');
-
-        // 从 localStorage 恢复昵称
-        let myNickname = localStorage.getItem('nickname') || '';
-        if (myNickname) {
-            nicknameInput.value = myNickname;
-        }
-
-        // ===== 在线用户列表 =====
-        // 连接后发送昵称，让服务器登记在线状态
-        socket.on('connect', function() {
-            const nickname = localStorage.getItem('nickname') || '匿名用户';
-            socket.emit('setNickname', nickname);
-        });
-
-        // 接收在线用户列表更新
-        socket.on('onlineUsers', function(users) {
-            onlineCountSpan.textContent = users.length;
-            onlineUsersListDiv.innerHTML = '';
-            users.forEach(function(name) {
-                const tag = document.createElement('span');
-                tag.className = 'online-user-tag';
-                tag.textContent = name;
-                onlineUsersListDiv.appendChild(tag);
-            });
-        });
-
-        // 昵称修改时同步更新在线状态
-        nicknameInput.addEventListener('change', function() {
-            const nickname = this.value.trim() || '匿名用户';
-            localStorage.setItem('nickname', nickname);
-            socket.emit('setNickname', nickname);
-        });
-
-        // ===== 消息发送 =====
-        function sendMessage() {
-            const text = messageInput.value.trim();
-            if (!text) return;
-
-            const nickname = localStorage.getItem('nickname') || '匿名用户';
-            const message = {
-                sender: nickname,
-                text: text,
-                time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-            };
-
-            // 发送到服务器
-            socket.emit('chatMessage', message);
-
-            // 清空输入框
-            messageInput.value = '';
-            messageInput.focus();
-        }
-
-        sendBtn.addEventListener('click', sendMessage);
-
-        messageInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        // ===== 接收消息 =====
-        socket.on('chatMessage', function(message) {
-            const isOwn = message.sender === (localStorage.getItem('nickname') || '匿名用户');
-            appendMessage(message, isOwn);
-        });
-
-        // ===== 渲染消息 =====
-        function appendMessage(message, isOwn) {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'message' + (isOwn ? ' own' : '');
-
-            // 头像（统一显示笑脸）
-            const avatarDiv = document.createElement('div');
-            avatarDiv.className = 'message-avatar';
-            avatarDiv.textContent = '😊';
-
-            // 消息内容
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-
-            const senderDiv = document.createElement('div');
-            senderDiv.className = 'message-sender';
-            senderDiv.textContent = message.sender;
-
-            const textDiv = document.createElement('div');
-            textDiv.className = 'message-text';
-            textDiv.textContent = message.text;
-
-            const timeDiv = document.createElement('div');
-            timeDiv.className = 'message-time';
-            timeDiv.textContent = message.time;
-
-            contentDiv.appendChild(senderDiv);
-            contentDiv.appendChild(textDiv);
-            contentDiv.appendChild(timeDiv);
-
-            msgDiv.appendChild(avatarDiv);
-            msgDiv.appendChild(contentDiv);
-
-            messagesArea.appendChild(msgDiv);
-
-            // 自动滚动到底部
-            messagesArea.scrollTop = messagesArea.scrollHeight;
-        }
-
-        // ===== 本地聊天记录（localStorage） =====
-        const HISTORY_KEY = 'chatHistory';
-        const MAX_HISTORY = 200;
-
-        // 页面加载时读取历史记录
-        function loadHistory() {
-            try {
-                const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-                history.forEach(function(msg) {
-                    const isOwn = msg.sender === (localStorage.getItem('nickname') || '匿名用户');
-                    appendMessage(msg, isOwn);
-                });
-            } catch (e) {
-                console.error('读取历史记录失败:', e);
-            }
-        }
-
-        // 保存消息到本地
-        function saveToHistory(message) {
-            try {
-                let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-                history.push(message);
-                // 只保留最近 200 条
-                if (history.length > MAX_HISTORY) {
-                    history = history.slice(history.length - MAX_HISTORY);
-                }
-                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-            } catch (e) {
-                console.error('保存历史记录失败:', e);
-            }
-        }
-
-        // 加载历史记录
-        loadHistory();
-
-        // 收到消息时同时保存到本地
-        socket.on('chatMessage', function(message) {
-            const isOwn = message.sender === (localStorage.getItem('nickname') || '匿名用户');
-            appendMessage(message, isOwn);
-            saveToHistory(message);
-        });
-    </script>
+    // 4. 按回车键发送
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendButton.click();
+      }
+    });
+  </script>
 </body>
 </html>
