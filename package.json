@@ -1,7 +1,7 @@
 {
   "name": "chatroom",
   "version": "1.0.0",
-  "description": "实时聊天室（含管理员和禁言功能）",
+  "description": "基于 Express + Socket.IO 的聊天室，支持 emoji、图片、禁言、JSON 持久化",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
