@@ -11,7 +11,7 @@
     :root {
       --bg-deep: #0b0616;
       --glass-bg: rgba(28, 17, 52, 0.45);
-      --glass-bg-strong: rgba(22, 12, 42, 0.68);
+      --glass-bg-strong: rgba(22, 12, 42, 0.78);
       --glass-border: rgba(216, 180, 254, 0.22);
       --glass-highlight: rgba(255, 255, 255, 0.12);
       --accent-purple: #9333ea;
@@ -31,7 +31,6 @@
       position: relative;
     }
 
-    /* 背景液态流光球体 */
     .ambient-orb {
       position: fixed;
       border-radius: 50%;
@@ -41,122 +40,53 @@
       opacity: 0.65;
       animation: floatOrb 14s ease-in-out infinite alternate;
     }
-    .orb-1 {
-      width: 380px; height: 380px;
-      background: radial-gradient(circle, #7e22ce, #4c1d95);
-      top: -80px; left: -60px;
-    }
-    .orb-2 {
-      width: 420px; height: 420px;
-      background: radial-gradient(circle, #a21caf, #581c87);
-      bottom: -100px; right: -80px;
-      animation-delay: -5s;
-    }
-    .orb-3 {
-      width: 260px; height: 260px;
-      background: radial-gradient(circle, #6366f1, #6b21a8);
-      top: 45%; left: 55%;
-      animation-delay: -9s;
-    }
+    .orb-1 { width: 380px; height: 380px; background: radial-gradient(circle, #7e22ce, #4c1d95); top: -80px; left: -60px; }
+    .orb-2 { width: 420px; height: 420px; background: radial-gradient(circle, #a21caf, #581c87); bottom: -100px; right: -80px; animation-delay: -5s; }
+    .orb-3 { width: 260px; height: 260px; background: radial-gradient(circle, #6366f1, #6b21a8); top: 45%; left: 55%; animation-delay: -9s; }
     @keyframes floatOrb {
       0% { transform: translate(0, 0) scale(1); }
       100% { transform: translate(35px, -30px) scale(1.12); }
     }
 
-    /* 通用液态玻璃面板类 */
     .liquid-glass {
       background: var(--glass-bg);
       backdrop-filter: blur(22px) saturate(165%);
       -webkit-backdrop-filter: blur(22px) saturate(165%);
       border: 1px solid var(--glass-border);
-      box-shadow:
-        0 12px 40px rgba(0, 0, 0, 0.45),
-        inset 0 1px 1px var(--glass-highlight);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), inset 0 1px 1px var(--glass-highlight);
     }
 
     /* 登录界面 */
     #loginScreen {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      padding: 20px;
+      position: relative; z-index: 1; display: flex; justify-content: center; align-items: center; height: 100vh; padding: 20px;
     }
     .login-card {
-      padding: 36px 32px;
-      border-radius: 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 18px;
-      width: 100%;
-      max-width: 380px;
+      padding: 36px 32px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; max-width: 380px;
     }
     .login-card h1 {
-      font-size: 24px;
-      font-weight: 600;
-      letter-spacing: 1px;
+      font-size: 24px; font-weight: 600; letter-spacing: 1px;
       background: linear-gradient(135deg, #f3e8ff, #c084fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .login-row {
-      display: flex;
-      width: 100%;
-      gap: 10px;
-    }
+    .login-row { display: flex; width: 100%; gap: 10px; }
     #loginScreen input {
-      flex: 1;
-      padding: 12px 16px;
-      font-size: 15px;
-      color: var(--text-main);
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid var(--glass-border);
-      border-radius: 14px;
-      outline: none;
-      transition: all 0.25s ease;
+      flex: 1; padding: 12px 16px; font-size: 15px; color: var(--text-main);
+      background: rgba(255, 255, 255, 0.07); border: 1px solid var(--glass-border); border-radius: 14px; outline: none;
     }
     #loginScreen input::placeholder { color: var(--text-muted); }
-    #loginScreen input:focus {
-      border-color: var(--accent-glow);
-      box-shadow: 0 0 15px rgba(192, 132, 252, 0.3);
-      background: rgba(255, 255, 255, 0.11);
-    }
     #loginScreen button {
-      padding: 12px 22px;
-      font-size: 15px;
-      font-weight: 600;
-      background: linear-gradient(135deg, #9333ea, #6b21a8);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 14px;
-      cursor: pointer;
-      box-shadow: 0 4px 18px rgba(147, 51, 234, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3);
-      transition: transform 0.15s ease, box-shadow 0.25s ease;
-    }
-    #loginScreen button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(168, 85, 247, 0.65);
+      padding: 12px 22px; font-size: 15px; font-weight: 600;
+      background: linear-gradient(135deg, #9333ea, #6b21a8); color: white;
+      border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 14px; cursor: pointer;
     }
 
     /* 聊天主容器 */
     #chatScreen {
-      position: relative;
-      z-index: 1;
-      display: none;
-      flex: 1;
-      flex-direction: column;
-      max-width: 860px;
-      margin: 16px auto;
-      width: calc(100% - 32px);
-      height: calc(100vh - 32px);
-      border-radius: 26px;
-      overflow: hidden;
+      position: relative; z-index: 1; display: none; flex: 1; flex-direction: column;
+      max-width: 860px; margin: 16px auto; width: calc(100% - 32px); height: calc(100vh - 32px);
+      border-radius: 26px; overflow: hidden;
     }
 
-    /* 被戳时的屏幕抖动动画 */
     @keyframes screenShake {
       0%, 100% { transform: translate(0, 0); }
       15% { transform: translate(-8px, -4px); }
@@ -165,312 +95,183 @@
       60% { transform: translate(6px, -3px); }
       75% { transform: translate(-3px, 2px); }
     }
-    .shake-effect {
-      animation: screenShake 0.45s ease-in-out;
-    }
+    .shake-effect { animation: screenShake 0.45s ease-in-out; }
 
     /* 顶部栏 */
     #header {
-      background: rgba(38, 20, 71, 0.55);
-      backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--glass-border);
-      padding: 15px 22px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      background: rgba(38, 20, 71, 0.55); backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--glass-border); padding: 15px 22px;
+      display: flex; justify-content: space-between; align-items: center;
     }
-    #header h2 {
-      font-size: 19px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      text-shadow: 0 2px 10px rgba(192, 132, 252, 0.4);
-    }
+    #header h2 { font-size: 19px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
     .header-right { display: flex; align-items: center; gap: 10px; }
     #onlineCount {
-      font-size: 13px;
-      color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.06);
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 13px; color: var(--text-muted); background: rgba(255, 255, 255, 0.06);
+      padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
     }
     .header-btn {
-      background: rgba(255, 255, 255, 0.09);
-      color: var(--text-main);
-      border: 1px solid var(--glass-border);
-      padding: 5px 12px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 12px;
-      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.09); color: var(--text-main);
+      border: 1px solid var(--glass-border); padding: 5px 12px; border-radius: 12px; cursor: pointer; font-size: 12px;
     }
-    .header-btn:hover {
-      background: rgba(168, 85, 247, 0.35);
-      border-color: var(--accent-glow);
-    }
+    .header-btn:hover { background: rgba(168, 85, 247, 0.35); border-color: var(--accent-glow); }
 
     /* 管理员面板 */
     #adminPanel {
-      background: rgba(59, 24, 95, 0.55);
-      border-bottom: 1px solid var(--glass-border);
-      padding: 10px 22px;
-      display: none;
-      align-items: center;
-      gap: 10px;
+      background: rgba(59, 24, 95, 0.55); border-bottom: 1px solid var(--glass-border);
+      padding: 10px 22px; display: none; align-items: center; gap: 10px;
     }
     #adminPanel input {
-      padding: 6px 12px;
-      border: 1px solid var(--glass-border);
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.25);
-      color: var(--text-main);
-      outline: none;
+      padding: 6px 12px; border: 1px solid var(--glass-border); border-radius: 10px;
+      background: rgba(0, 0, 0, 0.35); color: var(--text-main); outline: none; color-scheme: dark;
     }
     #adminPanel button {
-      padding: 6px 14px;
-      background: linear-gradient(135deg, #d97706, #b45309);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 13px;
+      padding: 6px 14px; background: linear-gradient(135deg, #d97706, #b45309);
+      color: white; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; cursor: pointer; font-size: 13px;
     }
+
+    /* 语音通话悬浮条（液态玻璃） */
+    #callBanner {
+      display: none;
+      background: linear-gradient(135deg, rgba(126, 34, 206, 0.75), rgba(76, 29, 149, 0.85));
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(216, 180, 254, 0.4);
+      padding: 12px 22px;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      animation: msgPop 0.25s ease-out;
+    }
+    .call-info { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; }
+    .pulse-dot {
+      width: 10px; height: 10px; border-radius: 50%; background: #4ade80;
+      box-shadow: 0 0 10px #4ade80; animation: pulseAnim 1.2s infinite;
+    }
+    @keyframes pulseAnim {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
+    .call-actions { display: flex; gap: 8px; }
+    .call-btn {
+      padding: 6px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.25);
+      color: white; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .btn-accept { background: #16a34a; }
+    .btn-hangup { background: #dc2626; }
+    .btn-mute { background: rgba(255, 255, 255, 0.15); }
 
     /* 在线用户栏 */
     #onlineUsers {
-      background: rgba(18, 10, 34, 0.45);
-      border-bottom: 1px solid var(--glass-border);
-      padding: 8px 22px;
-      max-height: 120px;
-      overflow-y: auto;
+      background: rgba(18, 10, 34, 0.45); border-bottom: 1px solid var(--glass-border);
+      padding: 8px 22px; max-height: 130px; overflow-y: auto;
     }
     #onlineUsers .user {
-      padding: 5px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
+      padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex; justify-content: space-between; align-items: center; font-size: 13px;
     }
     #onlineUsers .user:last-child { border-bottom: none; }
-    #onlineUsers .user .btn-group { display: flex; gap: 6px; }
-    #onlineUsers .user .poke-btn {
+    #onlineUsers .user .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .voice-btn {
       font-size: 11px; padding: 3px 9px;
-      background: rgba(168, 85, 247, 0.35);
-      border: 1px solid rgba(216, 180, 254, 0.45);
+      background: rgba(56, 189, 248, 0.25); border: 1px solid rgba(125, 211, 252, 0.4);
+      color: #bae6fd; border-radius: 8px; cursor: pointer;
+    }
+    .voice-btn:hover { background: rgba(56, 189, 248, 0.45); }
+    .poke-btn {
+      font-size: 11px; padding: 3px 9px;
+      background: rgba(168, 85, 247, 0.35); border: 1px solid rgba(216, 180, 254, 0.45);
       color: #f3e8ff; border-radius: 8px; cursor: pointer;
     }
-    #onlineUsers .user .poke-btn:hover {
-      background: rgba(168, 85, 247, 0.6);
-    }
-    #onlineUsers .user .mute-btn {
+    .mute-btn {
       font-size: 11px; padding: 3px 9px;
-      background: rgba(239, 68, 68, 0.35);
-      border: 1px solid rgba(248, 113, 113, 0.4);
+      background: rgba(239, 68, 68, 0.35); border: 1px solid rgba(248, 113, 113, 0.4);
       color: #fecaca; border-radius: 8px; cursor: pointer;
     }
-    #onlineUsers .user .unmute-btn {
+    .unmute-btn {
       font-size: 11px; padding: 3px 9px;
-      background: rgba(34, 197, 94, 0.3);
-      border: 1px solid rgba(74, 222, 128, 0.4);
+      background: rgba(34, 197, 94, 0.3); border: 1px solid rgba(74, 222, 128, 0.4);
       color: #bbf7d0; border-radius: 8px; cursor: pointer;
     }
 
     /* 消息区域 */
     #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px 22px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px;
     }
-
-    /* 自定义暗紫滚动条 */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(192, 132, 252, 0.25);
-      border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(192, 132, 252, 0.45); }
+    ::-webkit-scrollbar-thumb { background: rgba(192, 132, 252, 0.25); border-radius: 10px; }
 
-    /* 消息气泡 */
     .message {
-      padding: 11px 16px;
-      background: rgba(255, 255, 255, 0.07);
-      backdrop-filter: blur(12px);
+      padding: 11px 16px; background: rgba(255, 255, 255, 0.07); backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-      border-radius: 18px 18px 18px 4px;
-      max-width: 78%;
-      width: fit-content;
-      align-self: flex-start;
+      border-radius: 18px 18px 18px 4px; max-width: 78%; width: fit-content; align-self: flex-start;
       animation: msgPop 0.22s ease-out;
     }
-
-    /* 自己发出的消息样式 */
     .message.self {
       align-self: flex-end;
       background: linear-gradient(135deg, rgba(147, 51, 234, 0.55), rgba(107, 33, 168, 0.65));
       border: 1px solid rgba(216, 180, 254, 0.35);
       border-radius: 18px 18px 4px 18px;
     }
-
     @keyframes msgPop {
       from { opacity: 0; transform: translateY(8px) scale(0.98); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
-
-    .message-meta {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 4px;
-    }
+    .message-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
     .message .nickname { font-weight: 600; font-size: 13px; color: #e9d5ff; }
     .message .time { font-size: 11px; color: var(--text-muted); }
     .message .admin-badge {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      color: white;
-      font-size: 10px;
-      font-weight: bold;
-      padding: 2px 6px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+      background: linear-gradient(135deg, #f59e0b, #d97706); color: white;
+      font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 6px;
     }
-    .message img {
-      max-width: 230px;
-      max-height: 230px;
-      border-radius: 12px;
-      margin-top: 6px;
-      display: block;
-      cursor: pointer;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-    }
-    .message .text {
-      word-break: break-word;
-      display: block;
-      line-height: 1.5;
-      font-size: 14.5px;
-      color: #faf5ff;
-    }
+    .message img { max-width: 230px; max-height: 230px; border-radius: 12px; margin-top: 6px; display: block; cursor: pointer; }
+    .message .text { word-break: break-word; display: block; line-height: 1.5; font-size: 14.5px; color: #faf5ff; }
 
     .system-message {
-      align-self: center;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 12px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 4px 14px;
-      border-radius: 20px;
+      align-self: center; text-align: center; color: var(--text-muted); font-size: 12px;
+      background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px 14px; border-radius: 20px;
     }
 
     /* 底部输入区 */
     #inputArea {
-      background: rgba(28, 16, 52, 0.6);
-      backdrop-filter: blur(20px);
-      border-top: 1px solid var(--glass-border);
-      padding: 12px 18px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      position: relative;
+      background: rgba(28, 16, 52, 0.6); backdrop-filter: blur(20px);
+      border-top: 1px solid var(--glass-border); padding: 12px 18px;
+      display: flex; align-items: center; gap: 10px; position: relative;
     }
     #inputArea input[type="text"] {
-      flex: 1;
-      padding: 11px 16px;
-      border: 1px solid var(--glass-border);
-      border-radius: 20px;
-      font-size: 14px;
-      color: var(--text-main);
-      background: rgba(255, 255, 255, 0.07);
-      outline: none;
-      transition: all 0.2s ease;
+      flex: 1; padding: 11px 16px; border: 1px solid var(--glass-border); border-radius: 20px;
+      font-size: 14px; color: var(--text-main); background: rgba(255, 255, 255, 0.07); outline: none;
     }
     #inputArea input[type="text"]::placeholder { color: var(--text-muted); }
-    #inputArea input[type="text"]:focus {
-      border-color: var(--accent-glow);
-      background: rgba(255, 255, 255, 0.11);
-      box-shadow: 0 0 14px rgba(192, 132, 252, 0.25);
-    }
-    #inputArea button {
-      border: 1px solid var(--glass-border);
-      border-radius: 18px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
+    #inputArea button { border: 1px solid var(--glass-border); border-radius: 18px; cursor: pointer; }
     #sendBtn {
-      padding: 10px 20px;
-      background: linear-gradient(135deg, #9333ea, #7e22ce);
-      color: white;
-      font-size: 14px;
-      font-weight: 600;
-      box-shadow: 0 4px 15px rgba(147, 51, 234, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+      padding: 10px 20px; background: linear-gradient(135deg, #9333ea, #7e22ce);
+      color: white; font-size: 14px; font-weight: 600;
     }
-    #sendBtn:hover {
-      background: linear-gradient(135deg, #a855f7, #9333ea);
-      transform: translateY(-1px);
-    }
-    #emojiBtn, #imageBtn {
-      background: rgba(255, 255, 255, 0.08);
-      font-size: 18px;
-      padding: 8px 12px;
-    }
-    #emojiBtn:hover, #imageBtn:hover {
-      background: rgba(192, 132, 252, 0.25);
-    }
+    #emojiBtn, #imageBtn { background: rgba(255, 255, 255, 0.08); font-size: 18px; padding: 8px 12px; }
 
-    /* 液态玻璃 Emoji 面板 */
+    /* Emoji 面板 */
     #emojiPanel {
-      display: none;
-      background: var(--glass-bg-strong);
-      backdrop-filter: blur(26px) saturate(180%);
-      -webkit-backdrop-filter: blur(26px) saturate(180%);
-      border: 1px solid var(--glass-border);
-      border-radius: 18px;
-      padding: 12px;
-      position: absolute;
-      bottom: 72px;
-      left: 18px;
-      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.55), inset 0 1px 1px var(--glass-highlight);
-      max-width: 325px;
-      z-index: 20;
+      display: none; background: var(--glass-bg-strong); backdrop-filter: blur(26px);
+      border: 1px solid var(--glass-border); border-radius: 18px; padding: 12px;
+      position: absolute; bottom: 72px; left: 18px; max-width: 325px; z-index: 20;
     }
-    #emojiPanel span {
-      font-size: 24px;
-      cursor: pointer;
-      padding: 6px;
-      display: inline-block;
-      user-select: none;
-      border-radius: 10px;
-      transition: transform 0.15s ease, background 0.15s ease;
-    }
-    #emojiPanel span:hover {
-      background: rgba(192, 132, 252, 0.25);
-      transform: scale(1.18);
-    }
+    #emojiPanel span { font-size: 24px; cursor: pointer; padding: 6px; display: inline-block; user-select: none; }
+    #emojiPanel span:hover { background: rgba(192, 132, 252, 0.25); border-radius: 10px; }
 
     @media (max-width: 600px) {
-      #chatScreen {
-        margin: 0;
-        width: 100%;
-        height: 100vh;
-        border-radius: 0;
-        border: none;
-      }
+      #chatScreen { margin: 0; width: 100%; height: 100vh; border-radius: 0; border: none; }
     }
   </style>
 </head>
 <body>
 
-  <!-- 液态流光背景球 -->
   <div class="ambient-orb orb-1"></div>
   <div class="ambient-orb orb-2"></div>
   <div class="ambient-orb orb-3"></div>
+
+  <!-- 隐藏的远程音频播放器 -->
+  <audio id="remoteAudio" autoplay playsinline></audio>
 
   <!-- 登录界面 -->
   <div id="loginScreen">
@@ -492,6 +293,15 @@
         <button id="notifyToggleBtn" class="header-btn" onclick="toggleNotificationSetting()">🔔 提醒: 开</button>
         <button id="toggleAdminBtn" class="header-btn" onclick="toggleAdminPanel()">⚙️ 管理</button>
       </div>
+    </div>
+
+    <!-- 语音通话状态横幅 -->
+    <div id="callBanner">
+      <div class="call-info">
+        <span class="pulse-dot"></span>
+        <span id="callStatusText">正在呼叫...</span>
+      </div>
+      <div class="call-actions" id="callActions"></div>
     </div>
 
     <!-- 管理员登录面板 -->
@@ -551,44 +361,43 @@
     let notifyEnabled = true;
     let unreadCount = 0;
 
-    // ========== 动态生成标签页头像（暗紫主题 + 小红点） ==========
+    // ========== WebRTC 语音通话变量 ==========
+    let peerConnection = null;
+    let localStream = null;
+    let callTarget = null;
+    let pendingOffer = null;
+    let isMuted = false;
+    let callTimer = null;
+    let callSeconds = 0;
+
+    const rtcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    // ========== 动态 Favicon ==========
     function updateFavicon(hasBadge) {
       const canvas = document.createElement('canvas');
-      canvas.width = 64;
-      canvas.height = 64;
+      canvas.width = 64; canvas.height = 64;
       const ctx = canvas.getContext('2d');
 
       const grad = ctx.createLinearGradient(0, 0, 64, 64);
       grad.addColorStop(0, '#a855f7');
       grad.addColorStop(1, '#581c87');
       ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(32, 32, 28, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(32, 32, 28, 0, Math.PI * 2); ctx.fill();
 
       ctx.fillStyle = '#faf5ff';
-      ctx.beginPath();
-      ctx.roundRect(16, 20, 32, 22, 6);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(22, 42);
-      ctx.lineTo(18, 49);
-      ctx.lineTo(30, 42);
-      ctx.closePath();
-      ctx.fill();
+      ctx.beginPath(); ctx.roundRect(16, 20, 32, 22, 6); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(22, 42); ctx.lineTo(18, 49); ctx.lineTo(30, 42); ctx.closePath(); ctx.fill();
 
       if (hasBadge) {
         ctx.fillStyle = '#ff3b30';
-        ctx.beginPath();
-        ctx.arc(50, 14, 12, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = '#ffffff';
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(50, 14, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();
       }
-
       document.getElementById('favicon').href = canvas.toDataURL('image/png');
     }
 
@@ -600,19 +409,13 @@
         const ctx = new AudioCtx();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-
         osc.type = 'sine';
         osc.frequency.setValueAtTime(880, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
-
         gain.gain.setValueAtTime(0.15, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start();
-        osc.stop(ctx.currentTime + 0.25);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.25);
       } catch (e) {}
     }
 
@@ -620,9 +423,7 @@
     window.onload = function() {
       updateFavicon(false);
       const savedNickname = localStorage.getItem('chatroom_nickname');
-      if (savedNickname) {
-        document.getElementById('nicknameInput').value = savedNickname;
-      }
+      if (savedNickname) document.getElementById('nicknameInput').value = savedNickname;
     };
 
     document.addEventListener('visibilitychange', () => {
@@ -641,8 +442,7 @@
 
     function toggleNotificationSetting() {
       notifyEnabled = !notifyEnabled;
-      const btn = document.getElementById('notifyToggleBtn');
-      btn.textContent = notifyEnabled ? '🔔 提醒: 开' : '🔕 提醒: 关';
+      document.getElementById('notifyToggleBtn').textContent = notifyEnabled ? '🔔 提醒: 开' : '🔕 提醒: 关';
       if (notifyEnabled) {
         requestNotificationPermission();
         playNotificationSound();
@@ -652,21 +452,15 @@
     function notifyNewMessage(msg) {
       if (msg.nickname === myNickname) return;
       playNotificationSound();
-
       if (document.hidden) {
         unreadCount++;
         document.title = `(${unreadCount}条新消息) 聊天室`;
         updateFavicon(true);
-
         if (notifyEnabled && 'Notification' in window && Notification.permission === 'granted') {
-          const notification = new Notification(`新消息 - ${msg.nickname}`, {
-            body: msg.text || '[图片消息]',
-            tag: 'chatroom-new-msg'
+          const n = new Notification(`新消息 - ${msg.nickname}`, {
+            body: msg.text || '[图片消息]', tag: 'chatroom-new-msg'
           });
-          notification.onclick = function() {
-            window.focus();
-            this.close();
-          };
+          n.onclick = function() { window.focus(); this.close(); };
         }
       }
     }
@@ -674,10 +468,7 @@
     // ========== 登录 ==========
     function joinChat() {
       const nickname = document.getElementById('nicknameInput').value.trim();
-      if (!nickname) {
-        alert('请输入昵称');
-        return;
-      }
+      if (!nickname) { alert('请输入昵称'); return; }
       myNickname = nickname;
       localStorage.setItem('chatroom_nickname', nickname);
       requestNotificationPermission();
@@ -688,8 +479,164 @@
       
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('chatScreen').style.display = 'flex';
-      
       setupSocketListeners();
+    }
+
+    // ========== WebRTC 语音通话核心逻辑 ==========
+    function createPeerConnection(targetUser) {
+      const pc = new RTCPeerConnection(rtcConfig);
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('call-ice', { to: targetUser, candidate: event.candidate });
+        }
+      };
+
+      pc.ontrack = (event) => {
+        const remoteAudio = document.getElementById('remoteAudio');
+        remoteAudio.srcObject = event.streams[0];
+      };
+
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'connected') {
+          startCallTimer();
+        } else if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
+          endCallUI('通话已结束');
+        }
+      };
+
+      return pc;
+    }
+
+    // 发起语音呼叫
+    async function startVoiceCall(targetNickname) {
+      if (peerConnection || callTarget) {
+        alert('当前正在通话中，请先挂断');
+        return;
+      }
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      } catch (err) {
+        alert('无法访问麦克风，请确保浏览器已授权麦克风权限（且页面通过 HTTPS 或 localhost 访问）');
+        return;
+      }
+
+      callTarget = targetNickname;
+      peerConnection = createPeerConnection(targetNickname);
+      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      socket.emit('call-offer', { to: targetNickname, offer });
+      showCallBanner(`📞 正在呼叫 ${targetNickname}...`, [
+        { text: '取消呼叫', cls: 'btn-hangup', fn: () => hangupCall() }
+      ]);
+    }
+
+    // 接听来电
+    async function acceptIncomingCall() {
+      if (!pendingOffer || !callTarget) return;
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      } catch (err) {
+        alert('无法获取麦克风权限，已自动拒绝来电');
+        rejectIncomingCall();
+        return;
+      }
+
+      peerConnection = createPeerConnection(callTarget);
+      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(pendingOffer));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      socket.emit('call-answer', { to: callTarget, answer });
+      pendingOffer = null;
+      startCallTimer();
+    }
+
+    // 拒绝来电
+    function rejectIncomingCall() {
+      if (callTarget) {
+        socket.emit('call-reject', { to: callTarget, reason: '对方拒绝了语音通话' });
+      }
+      endCallUI();
+    }
+
+    // 挂断通话
+    function hangupCall() {
+      if (callTarget) {
+        socket.emit('call-hangup', { to: callTarget });
+      }
+      endCallUI('已挂断通话');
+    }
+
+    // 切换麦克风静音
+    function toggleMuteMic() {
+      if (!localStream) return;
+      isMuted = !isMuted;
+      localStream.getAudioTracks().forEach(track => { track.enabled = !isMuted; });
+      const btn = document.getElementById('muteMicBtn');
+      if (btn) btn.textContent = isMuted ? '🔇 取消静音' : '🎙️ 静音';
+    }
+
+    // 通话计时与UI更新
+    function startCallTimer() {
+      callSeconds = 0;
+      clearInterval(callTimer);
+      updateInCallBanner();
+      callTimer = setInterval(() => {
+        callSeconds++;
+        updateInCallBanner();
+      }, 1000);
+    }
+
+    function updateInCallBanner() {
+      const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+      const secs = String(callSeconds % 60).padStart(2, '0');
+      showCallBanner(`🎧 与 ${callTarget} 语音通话中 (${mins}:${secs})`, [
+        { id: 'muteMicBtn', text: isMuted ? '🔇 取消静音' : '🎙️ 静音', cls: 'btn-mute', fn: toggleMuteMic },
+        { text: '挂断', cls: 'btn-hangup', fn: hangupCall }
+      ]);
+    }
+
+    function showCallBanner(text, buttons) {
+      const banner = document.getElementById('callBanner');
+      const statusText = document.getElementById('callStatusText');
+      const actions = document.getElementById('callActions');
+
+      banner.style.display = 'flex';
+      statusText.textContent = text;
+      actions.innerHTML = '';
+
+      buttons.forEach(b => {
+        const btn = document.createElement('button');
+        if (b.id) btn.id = b.id;
+        btn.className = `call-btn ${b.cls}`;
+        btn.textContent = b.text;
+        btn.onclick = b.fn;
+        actions.appendChild(btn);
+      });
+    }
+
+    function endCallUI(notice) {
+      clearInterval(callTimer);
+      callTimer = null;
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+      callTarget = null;
+      pendingOffer = null;
+      isMuted = false;
+      document.getElementById('callBanner').style.display = 'none';
+      if (notice) renderSystemMessage(`📞 ${notice}`);
     }
 
     // ========== Socket 事件监听 ==========
@@ -720,25 +667,61 @@
       
       socket.on('muted notice', (data) => alert(data.message));
 
-      // 接收管理员戳一戳（Beta）
+      // 接收戳一戳
       socket.on('poked', (data) => {
         const chatBox = document.getElementById('chatScreen');
         chatBox.classList.remove('shake-effect');
         void chatBox.offsetWidth;
         chatBox.classList.add('shake-effect');
-
         playNotificationSound();
-
         if (document.hidden && notifyEnabled && 'Notification' in window && Notification.permission === 'granted') {
           new Notification('👉 你被管理员戳了一下', {
-            body: `管理员 ${data.from} 正在呼叫你！`,
-            tag: 'chatroom-poke'
+            body: `管理员 ${data.from} 正在呼叫你！`, tag: 'chatroom-poke'
           });
         }
       });
+
+      // ========== 语音通话信令接收 ==========
+      socket.on('call-offer', ({ from, offer }) => {
+        if (peerConnection || callTarget) {
+          socket.emit('call-reject', { to: from, reason: '对方正在通话中' });
+          return;
+        }
+        callTarget = from;
+        pendingOffer = offer;
+        playNotificationSound();
+
+        showCallBanner(`📲 ${from} 邀请你进行语音通话...`, [
+          { text: '接听', cls: 'btn-accept', fn: acceptIncomingCall },
+          { text: '拒绝', cls: 'btn-hangup', fn: rejectIncomingCall }
+        ]);
+
+        if (document.hidden && notifyEnabled && 'Notification' in window && Notification.permission === 'granted') {
+          new Notification('📲 语音通话邀请', { body: `${from} 正在呼叫你...`, tag: 'chatroom-call' });
+        }
+      });
+
+      socket.on('call-answer', async ({ answer }) => {
+        if (peerConnection) {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+          startCallTimer();
+        }
+      });
+
+      socket.on('call-ice', async ({ candidate }) => {
+        if (peerConnection && candidate) {
+          try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (e) {}
+        }
+      });
+
+      socket.on('call-reject', ({ reason }) => endCallUI(reason));
+      socket.on('call-hangup', ({ from }) => endCallUI(`${from} 挂断了通话`));
+      socket.on('call-ended', ({ reason }) => endCallUI(reason));
     }
 
-    // ========== 发送消息 ==========
+    // ========== 常规操作 ==========
     function sendMessage() {
       const input = document.getElementById('messageInput');
       const text = input.value.trim();
@@ -750,19 +733,13 @@
 
     function sendImage(file) {
       if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-        alert('图片不能超过 2MB');
-        return;
-      }
+      if (file.size > 2 * 1024 * 1024) { alert('图片不能超过 2MB'); return; }
       const reader = new FileReader();
-      reader.onload = function(e) {
-        socket.emit('chat message', { text: '', image: e.target.result });
-      };
+      reader.onload = (e) => socket.emit('chat message', { text: '', image: e.target.result });
       reader.readAsDataURL(file);
       document.getElementById('imageInput').value = '';
     }
 
-    // ========== Emoji ==========
     function toggleEmojiPanel() {
       const panel = document.getElementById('emojiPanel');
       panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
@@ -774,7 +751,6 @@
       input.focus();
     }
 
-    // ========== 管理员操作 ==========
     function toggleAdminPanel() {
       const panel = document.getElementById('adminPanel');
       panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
@@ -785,9 +761,7 @@
       socket.emit('admin login', password);
     }
 
-    function pokeUser(nickname) {
-      socket.emit('poke user', nickname);
-    }
+    function pokeUser(nickname) { socket.emit('poke user', nickname); }
 
     function muteUser(nickname) {
       const duration = prompt(`请输入对 [${nickname}] 的禁言时长（分钟），0 表示永久禁言：`);
@@ -795,9 +769,7 @@
       socket.emit('mute user', { nickname, duration: parseInt(duration) || 0 });
     }
 
-    function unmuteUser(nickname) {
-      socket.emit('unmute user', nickname);
-    }
+    function unmuteUser(nickname) { socket.emit('unmute user', nickname); }
 
     // ========== 渲染 ==========
     function renderMessage(msg) {
@@ -806,16 +778,12 @@
       div.className = 'message' + (msg.nickname === myNickname ? ' self' : '');
       
       let html = '<div class="message-meta">';
-      if (msg.isAdmin) {
-        html += '<span class="admin-badge">管理员</span>';
-      }
+      if (msg.isAdmin) html += '<span class="admin-badge">管理员</span>';
       html += `<span class="nickname">${escapeHtml(msg.nickname)}</span>`;
       html += `<span class="time">${escapeHtml(msg.time || '')}</span>`;
       html += '</div>';
       
-      if (msg.text) {
-        html += `<span class="text">${escapeHtml(msg.text)}</span>`;
-      }
+      if (msg.text) html += `<span class="text">${escapeHtml(msg.text)}</span>`;
       if (msg.image && msg.image.startsWith('data:image/')) {
         html += `<img src="${msg.image}" alt="图片" onclick="window.open(this.src)">`;
       }
@@ -847,28 +815,39 @@
         nameSpan.textContent = `${user.isAdmin ? '👑 ' : ''}${user.nickname}`;
         div.appendChild(nameSpan);
         
-        if (isAdmin && user.nickname !== myNickname) {
+        if (user.nickname !== myNickname) {
           const btnGroup = document.createElement('div');
           btnGroup.className = 'btn-group';
-          
-          const pokeBtn = document.createElement('button');
-          pokeBtn.className = 'poke-btn';
-          pokeBtn.textContent = '👉 戳一戳(Beta)';
-          pokeBtn.onclick = () => pokeUser(user.nickname);
 
-          const muteBtn = document.createElement('button');
-          muteBtn.className = 'mute-btn';
-          muteBtn.textContent = '禁言';
-          muteBtn.onclick = () => muteUser(user.nickname);
+          // 所有在线用户都可以发起一对一语音通话
+          const voiceBtn = document.createElement('button');
+          voiceBtn.className = 'voice-btn';
+          voiceBtn.textContent = '📞 语音';
+          voiceBtn.onclick = () => startVoiceCall(user.nickname);
+          btnGroup.appendChild(voiceBtn);
+
+          // 管理员专属按钮
+          if (isAdmin) {
+            const pokeBtn = document.createElement('button');
+            pokeBtn.className = 'poke-btn';
+            pokeBtn.textContent = '👉 戳一戳(Beta)';
+            pokeBtn.onclick = () => pokeUser(user.nickname);
+
+            const muteBtn = document.createElement('button');
+            muteBtn.className = 'mute-btn';
+            muteBtn.textContent = '禁言';
+            muteBtn.onclick = () => muteUser(user.nickname);
+            
+            const unmuteBtn = document.createElement('button');
+            unmuteBtn.className = 'unmute-btn';
+            unmuteBtn.textContent = '解禁';
+            unmuteBtn.onclick = () => unmuteUser(user.nickname);
+            
+            btnGroup.appendChild(pokeBtn);
+            btnGroup.appendChild(muteBtn);
+            btnGroup.appendChild(unmuteBtn);
+          }
           
-          const unmuteBtn = document.createElement('button');
-          unmuteBtn.className = 'unmute-btn';
-          unmuteBtn.textContent = '解禁';
-          unmuteBtn.onclick = () => unmuteUser(user.nickname);
-          
-          btnGroup.appendChild(pokeBtn);
-          btnGroup.appendChild(muteBtn);
-          btnGroup.appendChild(unmuteBtn);
           div.appendChild(btnGroup);
         }
         
