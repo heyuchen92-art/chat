@@ -1,11 +1,13 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const webpush = require('web-push');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
+app.use(express.json());
 
 const io = new Server(server, {
   maxHttpBufferSize: 5e6
@@ -15,12 +17,36 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
+const USERS_FILE = path.join(__dirname, 'users.json');
+const SUBS_FILE = path.join(__dirname, 'subscriptions.json');
 const MAX_HISTORY = 100;
-const RECALL_LIMIT_MS = 120 * 1000; // 120秒撤回限制
+const RECALL_LIMIT_MS = 120 * 1000;
+
+// ========== Web Push VAPID 密钥配置 ==========
+// 建议在 Render 环境变量中固定配置 VAPID_PUBLIC_KEY 和 VAPID_PRIVATE_KEY
+let vapidKeys = {
+  publicKey: process.env.VAPID_PUBLIC_KEY,
+  privateKey: process.env.VAPID_PRIVATE_KEY
+};
+if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
+  vapidKeys = webpush.generateVAPIDKeys();
+  console.log('⚠️ 未检测到固定 VAPID 环境变量，已自动生成临时密钥（建议将以下密钥填入 Render 环境变量以防重启失效）：');
+  console.log('VAPID_PUBLIC_KEY=' + vapidKeys.publicKey);
+  console.log('VAPID_PRIVATE_KEY=' + vapidKeys.privateKey);
+}
+
+webpush.setVapidDetails(
+  'mailto:admin@chatroom.local',
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
 
 // ========== 静态资源（拦截敏感文件） ==========
 app.use((req, res, next) => {
-  const blockedFiles = ['/messages.json', '/server.js', '/package.json', '/package-lock.json'];
+  const blockedFiles = [
+    '/messages.json', '/users.json', '/subscriptions.json',
+    '/server.js', '/package.json', '/package-lock.json'
+  ];
   if (blockedFiles.includes(req.path.toLowerCase())) {
     return res.status(403).send('禁止访问');
   }
@@ -29,41 +55,94 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname)));
 
-// ========== 消息持久化 ==========
+// ========== 数据持久化 ==========
 let messages = [];
 if (fs.existsSync(MESSAGES_FILE)) {
+  try { messages = JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8')); } catch (e) {}
+}
+
+let knownUsers = new Set();
+if (fs.existsSync(USERS_FILE)) {
   try {
-    messages = JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8'));
-  } catch (e) {
-    messages = [];
+    const arr = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+    if (Array.isArray(arr)) knownUsers = new Set(arr);
+  } catch (e) {}
+}
+messages.forEach(m => { if (m.nickname) knownUsers.add(m.nickname); });
+
+// 保存设备推送订阅 { nickname: [subscriptionObj, ...] }
+let pushSubscriptions = {};
+if (fs.existsSync(SUBS_FILE)) {
+  try { pushSubscriptions = JSON.parse(fs.readFileSync(SUBS_FILE, 'utf8')); } catch (e) {}
+}
+
+let isSavingMsg = false;
+let pendingSaveMsg = false;
+async function saveMessages() {
+  if (isSavingMsg) { pendingSaveMsg = true; return; }
+  isSavingMsg = true;
+  try {
+    await fs.promises.writeFile(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+  } catch (err) {} finally {
+    isSavingMsg = false;
+    if (pendingSaveMsg) { pendingSaveMsg = false; saveMessages(); }
   }
 }
 
-let isSaving = false;
-let pendingSave = false;
+async function saveUsers() {
+  try { await fs.promises.writeFile(USERS_FILE, JSON.stringify([...knownUsers], null, 2)); } catch (e) {}
+}
 
-async function saveMessages() {
-  if (isSaving) {
-    pendingSave = true;
-    return;
+async function saveSubscriptions() {
+  try { await fs.promises.writeFile(SUBS_FILE, JSON.stringify(pushSubscriptions, null, 2)); } catch (e) {}
+}
+
+// ========== Push API 接口 ==========
+app.get('/api/vapid-public-key', (req, res) => {
+  res.json({ publicKey: vapidKeys.publicKey });
+});
+
+app.post('/api/subscribe', (req, res) => {
+  const { nickname, subscription } = req.body || {};
+  if (!nickname || !subscription || !subscription.endpoint) {
+    return res.status(400).json({ error: '无效的订阅信息' });
   }
-  isSaving = true;
-  try {
-    await fs.promises.writeFile(MESSAGES_FILE, JSON.stringify(messages, null, 2));
-  } catch (err) {
-    console.error('保存历史消息失败:', err);
-  } finally {
-    isSaving = false;
-    if (pendingSave) {
-      pendingSave = false;
-      saveMessages();
+  if (!pushSubscriptions[nickname]) {
+    pushSubscriptions[nickname] = [];
+  }
+  const exists = pushSubscriptions[nickname].some(s => s.endpoint === subscription.endpoint);
+  if (!exists) {
+    pushSubscriptions[nickname].push(subscription);
+    saveSubscriptions();
+  }
+  res.json({ success: true });
+});
+
+// 向指定用户或所有离线用户发送系统级 Web Push
+async function sendPushToUser(targetNickname, payload) {
+  const subs = pushSubscriptions[targetNickname];
+  if (!subs || subs.length === 0) return;
+
+  const validSubs = [];
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(sub, JSON.stringify(payload));
+      validSubs.push(sub);
+    } catch (err) {
+      // 410 或 404 表示订阅已过期，自动清理
+      if (err.statusCode !== 410 && err.statusCode !== 404) {
+        validSubs.push(sub);
+      }
     }
   }
+  pushSubscriptions[targetNickname] = validSubs;
+  saveSubscriptions();
 }
 
 // ========== 状态管理 ==========
 const mutedUsers = new Map();
 const pokeCooldown = new Map();
+const pendingCalls = new Map();
 
 function findSocketByNickname(nickname) {
   for (const [, s] of io.of('/').sockets) {
@@ -72,38 +151,74 @@ function findSocketByNickname(nickname) {
   return null;
 }
 
+function getAllUsersStatus() {
+  const onlineMap = new Map();
+  for (const [, socket] of io.of('/').sockets) {
+    if (socket.nickname) {
+      onlineMap.set(socket.nickname, { isAdmin: socket.isAdmin });
+      knownUsers.add(socket.nickname);
+    }
+  }
+
+  const list = [];
+  for (const nickname of knownUsers) {
+    const onlineInfo = onlineMap.get(nickname);
+    list.push({
+      nickname,
+      online: Boolean(onlineInfo),
+      isAdmin: onlineInfo ? onlineInfo.isAdmin : false
+    });
+  }
+
+  list.sort((a, b) => Number(b.online) - Number(a.online));
+  return list;
+}
+
 // ========== Socket.IO ==========
 io.on('connection', (socket) => {
-  // 用户加入
   socket.on('join', (rawNickname) => {
     let nickname = String(rawNickname || '').trim().slice(0, 20);
     if (!nickname) return;
 
-    const onlineUsers = getOnlineUsers();
-    if (onlineUsers.some(u => u.nickname === nickname)) {
+    if (findSocketByNickname(nickname)) {
       nickname = `${nickname}_${Math.floor(10 + Math.random() * 90)}`;
     }
 
     socket.nickname = nickname;
     socket.isAdmin = false;
 
-    socket.broadcast.emit('system message', { text: `${nickname} 加入了聊天室` });
-    io.emit('online users', getOnlineUsers());
+    if (!knownUsers.has(nickname)) {
+      knownUsers.add(nickname);
+      saveUsers();
+    }
+
+    socket.broadcast.emit('system message', { text: `${nickname} 上线了` });
+    io.emit('online users', getAllUsersStatus());
+
+    // 如果有人正在呼叫刚上线的该用户，立即推送来电
+    const pending = pendingCalls.get(nickname);
+    if (pending) {
+      const callerSocket = findSocketByNickname(pending.from);
+      if (callerSocket) {
+        socket.emit('call-offer', { from: pending.from, offer: pending.offer });
+      } else {
+        pendingCalls.delete(nickname);
+      }
+    }
   });
 
-  // 管理员登录
   socket.on('admin login', (password) => {
     if (password === ADMIN_PASSWORD) {
       socket.isAdmin = true;
       socket.emit('admin login success');
       io.emit('system message', { text: `管理员 (${socket.nickname}) 已上线` });
-      io.emit('online users', getOnlineUsers());
+      io.emit('online users', getAllUsersStatus());
     } else {
       socket.emit('admin login fail');
     }
   });
 
-  // 发送消息
+  // 发送消息 + 离线推送
   socket.on('chat message', (msg) => {
     const nickname = socket.nickname;
     if (!nickname || !msg) return;
@@ -146,12 +261,23 @@ io.on('connection', (socket) => {
 
     saveMessages();
     io.emit('chat message', message);
+
+    // 给当前不在线（关掉网页）的所有已订阅用户发送系统横幅通知
+    for (const targetUser of Object.keys(pushSubscriptions)) {
+      if (targetUser !== nickname && !findSocketByNickname(targetUser)) {
+        sendPushToUser(targetUser, {
+          type: 'message',
+          title: `💬 ${nickname} 发来新消息`,
+          body: text || '[图片消息]',
+          tag: 'chatroom-offline-msg'
+        });
+      }
+    }
   });
 
-  // 撤回消息（普通用户120秒内，管理员无限制）
+  // 撤回消息
   socket.on('recall message', (msgId) => {
     if (!socket.nickname || !msgId) return;
-
     const index = messages.findIndex(m => m.id === msgId);
     if (index === -1) {
       socket.emit('recall error', '该消息已不存在或已被撤回');
@@ -171,7 +297,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // 从历史记录中彻底移除，防止刷新后重新加载
     messages.splice(index, 1);
     saveMessages();
 
@@ -201,10 +326,9 @@ io.on('connection', (socket) => {
     io.emit('system message', { text: `管理员已解除 ${nickname} 的禁言` });
   });
 
-  // 管理员戳一戳（Beta）
+  // 管理员戳一戳
   socket.on('poke user', (targetNickname) => {
     if (!socket.isAdmin || !targetNickname) return;
-
     const now = Date.now();
     const lastPoke = pokeCooldown.get(socket.id) || 0;
     if (now - lastPoke < 3000) return;
@@ -213,75 +337,77 @@ io.on('connection', (socket) => {
     const targetSocket = findSocketByNickname(targetNickname);
     if (targetSocket) {
       targetSocket.emit('poked', { from: socket.nickname });
-      io.emit('system message', {
-        text: `👉 管理员 ${socket.nickname} 戳了戳 ${targetNickname}`
+    } else {
+      sendPushToUser(targetNickname, {
+        type: 'poke',
+        title: '👉 管理员戳了你一下',
+        body: `管理员 ${socket.nickname} 正在聊天室呼叫你！`,
+        tag: 'chatroom-offline-poke'
       });
     }
+    io.emit('system message', {
+      text: `👉 管理员 ${socket.nickname} 戳了戳 ${targetNickname}`
+    });
   });
 
-  // WebRTC 语音通话信令转发
+  // WebRTC 语音通话信令转发（支持关掉网页时的系统级来电推送）
   socket.on('call-offer', ({ to, offer }) => {
     if (!socket.nickname || !to) return;
     const target = findSocketByNickname(to);
     if (target) {
+      pendingCalls.delete(to);
       target.emit('call-offer', { from: socket.nickname, offer });
     } else {
-      socket.emit('call-ended', { reason: '对方已离线' });
+      pendingCalls.set(to, { from: socket.nickname, offer, time: Date.now() });
+      // 向未打开网页的目标用户发送系统级来电横幅推送
+      sendPushToUser(to, {
+        type: 'call',
+        caller: socket.nickname,
+        title: `📞 语音来电：${socket.nickname}`,
+        body: `${socket.nickname} 正在给你打语音电话，点击立即进入接听！`,
+        tag: 'incoming-voice-call'
+      });
     }
   });
 
   socket.on('call-answer', ({ to, answer }) => {
+    pendingCalls.delete(socket.nickname);
     const target = findSocketByNickname(to);
-    if (target) {
-      target.emit('call-answer', { from: socket.nickname, answer });
-    }
+    if (target) target.emit('call-answer', { from: socket.nickname, answer });
   });
 
   socket.on('call-ice', ({ to, candidate }) => {
     const target = findSocketByNickname(to);
-    if (target) {
-      target.emit('call-ice', { from: socket.nickname, candidate });
-    }
+    if (target) target.emit('call-ice', { from: socket.nickname, candidate });
   });
 
   socket.on('call-reject', ({ to, reason }) => {
+    pendingCalls.delete(socket.nickname);
     const target = findSocketByNickname(to);
-    if (target) {
-      target.emit('call-reject', { from: socket.nickname, reason: reason || '对方拒绝了通话' });
-    }
+    if (target) target.emit('call-reject', { from: socket.nickname, reason: reason || '对方拒绝了通话' });
   });
 
   socket.on('call-hangup', ({ to }) => {
+    pendingCalls.delete(to);
     const target = findSocketByNickname(to);
-    if (target) {
-      target.emit('call-hangup', { from: socket.nickname });
-    }
+    if (target) target.emit('call-hangup', { from: socket.nickname });
   });
 
-  // 获取历史消息
   socket.on('get history', () => {
     socket.emit('history', messages);
   });
 
-  // 断开连接
   socket.on('disconnect', () => {
     pokeCooldown.delete(socket.id);
     if (socket.nickname) {
-      socket.broadcast.emit('system message', { text: `${socket.nickname} 离开了聊天室` });
-      io.emit('online users', getOnlineUsers());
+      for (const [targetName, info] of pendingCalls.entries()) {
+        if (info.from === socket.nickname) pendingCalls.delete(targetName);
+      }
+      socket.broadcast.emit('system message', { text: `${socket.nickname} 离线了` });
+      io.emit('online users', getAllUsersStatus());
     }
   });
 });
-
-function getOnlineUsers() {
-  const users = [];
-  for (const [id, socket] of io.of('/').sockets) {
-    if (socket.nickname) {
-      users.push({ id, nickname: socket.nickname, isAdmin: socket.isAdmin });
-    }
-  }
-  return users;
-}
 
 server.listen(PORT, () => {
   console.log(`服务器运行在端口 ${PORT}`);
