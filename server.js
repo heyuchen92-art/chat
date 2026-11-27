@@ -7,7 +7,7 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 
-// 修复 1：调高传输上限至 5MB，防止 2MB 图片转 Base64 后超出默认 1MB 限制导致断连
+// 调高传输上限至 5MB，防止 2MB 图片转 Base64 后超出默认限制
 const io = new Server(server, {
   maxHttpBufferSize: 5e6
 });
@@ -16,9 +16,17 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
-const MAX_HISTORY = 100; // 最多保留 100 条历史消息，防止包含 Base64 图片的文件无限膨胀
+const MAX_HISTORY = 100;
 
-// ========== 静态资源 ==========
+// ========== 静态资源（拦截同目录下的敏感文件） ==========
+app.use((req, res, next) => {
+  const blockedFiles = ['/messages.json', '/server.js', '/package.json', '/package-lock.json'];
+  if (blockedFiles.includes(req.path.toLowerCase())) {
+    return res.status(403).send('禁止访问');
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname)));
 
 // ========== 消息持久化（JSON 文件） ==========
@@ -31,7 +39,6 @@ if (fs.existsSync(MESSAGES_FILE)) {
   }
 }
 
-// 修复 5：改用异步写入，避免高并发时同步 I/O 阻塞主线程
 let isSaving = false;
 let pendingSave = false;
 
@@ -54,9 +61,9 @@ async function saveMessages() {
   }
 }
 
-// ========== 禁言状态 ==========
-// key: 昵称, value: 禁言截止时间戳（0 表示永久）
+// ========== 状态管理 ==========
 const mutedUsers = new Map();
+const pokeCooldown = new Map();
 
 // ========== Socket.IO ==========
 io.on('connection', (socket) => {
@@ -67,7 +74,7 @@ io.on('connection', (socket) => {
     let nickname = String(rawNickname || '').trim().slice(0, 20);
     if (!nickname) return;
 
-    // 修复 4：防止重名冲突，若已存在相同昵称则自动加后缀
+    // 防止重名冲突
     const onlineUsers = getOnlineUsers();
     if (onlineUsers.some(u => u.nickname === nickname)) {
       nickname = `${nickname}_${Math.floor(10 + Math.random() * 90)}`;
@@ -86,7 +93,6 @@ io.on('connection', (socket) => {
       socket.isAdmin = true;
       socket.emit('admin login success');
       io.emit('system message', { text: `管理员 (${socket.nickname}) 已上线` });
-      // 修复 2：管理员登录后立即刷新所有人的在线用户列表，显示皇冠标志
       io.emit('online users', getOnlineUsers());
     } else {
       socket.emit('admin login fail');
@@ -112,7 +118,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    const text = String(msg.text || '').trim().slice(0, 1000); // 限制单条文本长度
+    const text = String(msg.text || '').trim().slice(0, 1000);
     const image = (typeof msg.image === 'string' && msg.image.startsWith('data:image/'))
       ? msg.image
       : null;
@@ -144,7 +150,6 @@ io.on('connection', (socket) => {
     const muteUntil = mins === 0 ? 0 : Date.now() + mins * 60 * 1000;
 
     mutedUsers.set(nickname, muteUntil);
-    // 修复 3：只发送一次 system message，避免前端收到两个事件渲染出两条重复提示
     io.emit('system message', {
       text: `管理员已将 ${nickname} 禁言${mins === 0 ? '（永久）' : ` ${mins} 分钟`}`
     });
@@ -157,6 +162,32 @@ io.on('connection', (socket) => {
     io.emit('system message', { text: `管理员已解除 ${nickname} 的禁言` });
   });
 
+  // 戳一戳功能（仅管理员，Beta）
+  socket.on('poke user', (targetNickname) => {
+    if (!socket.isAdmin || !targetNickname) return;
+
+    // 3秒防刷冷却
+    const now = Date.now();
+    const lastPoke = pokeCooldown.get(socket.id) || 0;
+    if (now - lastPoke < 3000) return;
+    pokeCooldown.set(socket.id, now);
+
+    let targetSocket = null;
+    for (const [, s] of io.of('/').sockets) {
+      if (s.nickname === targetNickname) {
+        targetSocket = s;
+        break;
+      }
+    }
+
+    if (targetSocket) {
+      targetSocket.emit('poked', { from: socket.nickname });
+      io.emit('system message', {
+        text: `👉 管理员 ${socket.nickname} 戳了戳 ${targetNickname}`
+      });
+    }
+  });
+
   // 获取历史消息
   socket.on('get history', () => {
     socket.emit('history', messages);
@@ -164,6 +195,7 @@ io.on('connection', (socket) => {
 
   // 断开连接
   socket.on('disconnect', () => {
+    pokeCooldown.delete(socket.id);
     if (socket.nickname) {
       socket.broadcast.emit('system message', { text: `${socket.nickname} 离开了聊天室` });
       io.emit('online users', getOnlineUsers());
