@@ -132,9 +132,9 @@
     /* 语音通话状态横幅 */
     #callBanner {
       display: none;
-      background: linear-gradient(135deg, rgba(126, 34, 206, 0.75), rgba(76, 29, 149, 0.85));
+      background: linear-gradient(135deg, rgba(126, 34, 206, 0.85), rgba(76, 29, 149, 0.92));
       backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(216, 180, 254, 0.4);
+      border-bottom: 1px solid rgba(216, 180, 254, 0.45);
       padding: 12px 22px;
       justify-content: space-between;
       align-items: center;
@@ -270,7 +270,6 @@
   <div class="ambient-orb orb-2"></div>
   <div class="ambient-orb orb-3"></div>
 
-  <!-- 隐藏的远程音频播放器 -->
   <audio id="remoteAudio" autoplay playsinline></audio>
 
   <!-- 登录界面 -->
@@ -360,6 +359,7 @@
     let currentUsers = [];
     let notifyEnabled = true;
     let unreadCount = 0;
+    let swRegistration = null;
 
     // ========== WebRTC 语音通话变量 ==========
     let peerConnection = null;
@@ -369,9 +369,10 @@
     let isMuted = false;
     let callTimer = null;
     let callSeconds = 0;
-    let iceCandidateQueue = []; // 缓存提前到达的 ICE 路径
+    let iceCandidateQueue = [];
+    let ringtoneInterval = null;
+    let titleFlashInterval = null;
 
-    // 配置 STUN + 免费公共 TURN 中继服务器，解决跨网防火墙无法直连无声问题
     const rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -388,6 +389,130 @@
         }
       ]
     };
+
+    // ========== 注册 Service Worker（用于系统级常驻来电通知） ==========
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        swRegistration = reg;
+      }).catch(() => {});
+
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'CALL_NOTIFICATION_ACTION') {
+          if (event.data.action === 'accept') {
+            acceptIncomingCall();
+          } else if (event.data.action === 'reject') {
+            rejectIncomingCall();
+          }
+        }
+      });
+    }
+
+    // ========== 持续循环电话铃声 ==========
+    function startRingtone() {
+      if (!notifyEnabled) return;
+      stopRingtone();
+
+      const playRingBurst = () => {
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          const ctx = new AudioCtx();
+          const now = ctx.currentTime;
+
+          // 模拟经典双音电话铃声
+          [0, 0.22].forEach((offset) => {
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc1.type = 'sine';
+            osc2.type = 'sine';
+            osc1.frequency.setValueAtTime(784, now + offset); // G5
+            osc2.frequency.setValueAtTime(1046.5, now + offset); // C6
+
+            gain.gain.setValueAtTime(0.16, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.18);
+
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc1.start(now + offset);
+            osc2.start(now + offset);
+            osc1.stop(now + offset + 0.18);
+            osc2.stop(now + offset + 0.18);
+          });
+        } catch (e) {}
+      };
+
+      playRingBurst();
+      ringtoneInterval = setInterval(playRingBurst, 1800);
+    }
+
+    function stopRingtone() {
+      if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
+      }
+      if (titleFlashInterval) {
+        clearInterval(titleFlashInterval);
+        titleFlashInterval = null;
+        document.title = '聊天室';
+      }
+      // 关闭残留的系统来电通知
+      if (swRegistration) {
+        swRegistration.getNotifications({ tag: 'incoming-voice-call' }).then((list) => {
+          list.forEach((n) => n.close());
+        });
+      }
+    }
+
+    // ========== 弹出系统级来电横幅通知 ==========
+    async function showSystemCallNotification(callerName) {
+      // 标题栏闪烁提醒 + 标签页红点
+      updateFavicon(true);
+      let toggle = false;
+      clearInterval(titleFlashInterval);
+      titleFlashInterval = setInterval(() => {
+        toggle = !toggle;
+        document.title = toggle ? `📞 【${callerName} 来电中...】` : '🔔 请接听语音通话！';
+      }, 800);
+
+      if (!notifyEnabled || !('Notification' in window) || Notification.permission !== 'granted') return;
+
+      const iconUrl = document.getElementById('favicon').href;
+      const options = {
+        body: `${callerName} 正在请求与你语音通话，点击接听或挂断`,
+        icon: iconUrl,
+        badge: iconUrl,
+        tag: 'incoming-voice-call',
+        renotify: true,
+        requireInteraction: true, // 系统级常驻横幅：不手动操作不会自动消失
+        vibrate: [300, 150, 300, 150, 300],
+        actions: [
+          { action: 'accept', title: '✅ 接听' },
+          { action: 'reject', title: '❌ 挂断' }
+        ]
+      };
+
+      if (swRegistration && swRegistration.showNotification) {
+        try {
+          await swRegistration.showNotification(`📞 语音来电：${callerName}`, options);
+          return;
+        } catch (e) {}
+      }
+
+      // 降级方案（未启用 SW 时使用普通系统常驻通知）
+      const n = new Notification(`📞 语音来电：${callerName}`, {
+        body: options.body,
+        icon: iconUrl,
+        tag: 'incoming-voice-call',
+        requireInteraction: true
+      });
+      n.onclick = () => {
+        window.focus();
+        n.close();
+      };
+    }
 
     // ========== 动态 Favicon ==========
     function updateFavicon(hasBadge) {
@@ -413,7 +538,7 @@
       document.getElementById('favicon').href = canvas.toDataURL('image/png');
     }
 
-    // ========== 提示音 ==========
+    // ========== 普通消息提示音 ==========
     function playNotificationSound() {
       if (!notifyEnabled) return;
       try {
@@ -439,7 +564,7 @@
     };
 
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
+      if (!document.hidden && !pendingOffer) {
         unreadCount = 0;
         document.title = '聊天室';
         updateFavicon(false);
@@ -458,13 +583,15 @@
       if (notifyEnabled) {
         requestNotificationPermission();
         playNotificationSound();
+      } else {
+        stopRingtone();
       }
     }
 
     function notifyNewMessage(msg) {
       if (msg.nickname === myNickname) return;
       playNotificationSound();
-      if (document.hidden) {
+      if (document.hidden && !pendingOffer) {
         unreadCount++;
         document.title = `(${unreadCount}条新消息) 聊天室`;
         updateFavicon(true);
@@ -507,7 +634,6 @@
       pc.ontrack = (event) => {
         const remoteAudio = document.getElementById('remoteAudio');
         remoteAudio.srcObject = event.streams[0];
-        // 显式触发音频播放，防止浏览器拦截自动播放
         remoteAudio.play().catch(err => console.warn('音频播放需交互:', err));
       };
 
@@ -561,6 +687,8 @@
 
     // 接听来电
     async function acceptIncomingCall() {
+      stopRingtone();
+      updateFavicon(false);
       if (!pendingOffer || !callTarget) return;
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -586,6 +714,8 @@
 
     // 拒绝来电
     function rejectIncomingCall() {
+      stopRingtone();
+      updateFavicon(false);
       if (callTarget) {
         socket.emit('call-reject', { to: callTarget, reason: '对方拒绝了语音通话' });
       }
@@ -594,13 +724,14 @@
 
     // 挂断通话
     function hangupCall() {
+      stopRingtone();
+      updateFavicon(false);
       if (callTarget) {
         socket.emit('call-hangup', { to: callTarget });
       }
       endCallUI('已挂断通话');
     }
 
-    // 切换麦克风静音
     function toggleMuteMic() {
       if (!localStream) return;
       isMuted = !isMuted;
@@ -609,7 +740,6 @@
       if (btn) btn.textContent = isMuted ? '🔇 取消静音' : '🎙️ 静音';
     }
 
-    // 通话计时与UI更新
     function startCallTimer() {
       callSeconds = 0;
       clearInterval(callTimer);
@@ -649,6 +779,8 @@
     }
 
     function endCallUI(notice) {
+      stopRingtone();
+      updateFavicon(false);
       clearInterval(callTimer);
       callTimer = null;
       if (peerConnection) {
@@ -695,7 +827,6 @@
       
       socket.on('muted notice', (data) => alert(data.message));
 
-      // 接收戳一戳
       socket.on('poked', (data) => {
         const chatBox = document.getElementById('chatScreen');
         chatBox.classList.remove('shake-effect');
@@ -709,7 +840,7 @@
         }
       });
 
-      // ========== 语音通话信令接收 ==========
+      // ========== 语音通话信令接收（带系统级通知 + 持续响铃） ==========
       socket.on('call-offer', ({ from, offer }) => {
         if (peerConnection || callTarget) {
           socket.emit('call-reject', { to: from, reason: '对方正在通话中' });
@@ -718,16 +849,18 @@
         iceCandidateQueue = [];
         callTarget = from;
         pendingOffer = offer;
-        playNotificationSound();
 
+        // 1. 循环响铃
+        startRingtone();
+
+        // 2. 弹出系统级常驻横幅通知
+        showSystemCallNotification(from);
+
+        // 3. 页面内通话横幅
         showCallBanner(`📲 ${from} 邀请你进行语音通话...`, [
           { text: '接听', cls: 'btn-accept', fn: acceptIncomingCall },
           { text: '拒绝', cls: 'btn-hangup', fn: rejectIncomingCall }
         ]);
-
-        if (document.hidden && notifyEnabled && 'Notification' in window && Notification.permission === 'granted') {
-          new Notification('📲 语音通话邀请', { body: `${from} 正在呼叫你...`, tag: 'chatroom-call' });
-        }
       });
 
       socket.on('call-answer', async ({ answer }) => {
