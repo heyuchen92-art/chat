@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const webpush = require('web-push');
 const path = require('path');
 const fs = require('fs');
 
@@ -13,33 +12,81 @@ const io = new Server(server, {
   maxHttpBufferSize: 5e6
 });
 
-// ========== 配置 ==========
+// ========== 基础配置 ==========
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
 const USERS_FILE = path.join(__dirname, 'users.json');
-const SUBS_FILE = path.join(__dirname, 'subscriptions.json');
 const MAX_HISTORY = 100;
 const RECALL_LIMIT_MS = 120 * 1000;
 
-// ========== Web Push VAPID 密钥配置 ==========
-// 建议在 Render 环境变量中固定配置 VAPID_PUBLIC_KEY 和 VAPID_PRIVATE_KEY
-let vapidKeys = {
-  publicKey: process.env.VAPID_PUBLIC_KEY,
-  privateKey: process.env.VAPID_PRIVATE_KEY
-};
-if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
-  vapidKeys = webpush.generateVAPIDKeys();
-  console.log('⚠️ 未检测到固定 VAPID 环境变量，已自动生成临时密钥（建议将以下密钥填入 Render 环境变量以防重启失效）：');
-  console.log('VAPID_PUBLIC_KEY=' + vapidKeys.publicKey);
-  console.log('VAPID_PRIVATE_KEY=' + vapidKeys.privateKey);
+// ========== Gmail 离线邮件通知配置（Resend API） ==========
+const RESEND_API_KEY = (process.env.RESEND_API_KEY || '').trim();
+const NOTIFY_GMAIL = (process.env.NOTIFY_GMAIL || '').trim();
+const CHATROOM_URL = (process.env.CHATROOM_URL || 'https://chat-4oqu.onrender.com').trim();
+let lastEmailNotifyTime = 0;
+const NOTIFY_COOLDOWN_MS = 3 * 60 * 1000; // 普通消息 3 分钟冷却，防止连续发消息刷屏
+
+async function sendGmailNotification(senderName, previewText, isCall = false, targetName = '') {
+  if (!RESEND_API_KEY || !NOTIFY_GMAIL) return;
+
+  const now = Date.now();
+  // 语音呼叫立即发送，普通消息和戳一戳遵守 3 分钟冷却
+  if (!isCall && now - lastEmailNotifyTime < NOTIFY_COOLDOWN_MS) {
+    return;
+  }
+  lastEmailNotifyTime = now;
+
+  const targetHint = targetName ? `（呼叫 ${targetName}）` : '';
+  const subject = isCall
+    ? `📞 [紧急来电] ${senderName} 正在聊天室呼叫你${targetHint}`
+    : `💬 [聊天室新消息] ${senderName} 发来了动态`;
+
+  const htmlContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; padding: 20px; background: #140826; color: #f3e8ff; border-radius: 14px; max-width: 480px;">
+      <h2 style="color: #c084fc; margin-top: 0; font-size: 18px;">${escapeHtmlServer(subject)}</h2>
+      <p style="color: #e9d5ff; font-size: 15px; line-height: 1.6; background: rgba(255,255,255,0.08); padding: 12px 14px; border-radius: 10px;">
+        <strong>内容详情：</strong>${escapeHtmlServer(previewText)}
+      </p>
+      <a href="${CHATROOM_URL}" 
+         style="display: inline-block; margin-top: 14px; padding: 11px 22px; background: #9333ea; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 10px;">
+        立即打开聊天室
+      </a>
+      <p style="color: rgba(233,213,255,0.5); font-size: 12px; margin-top: 16px; margin-bottom: 0;">
+        发送时间：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+      </p>
+    </div>
+  `;
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: '聊天室提醒 <onboarding@resend.dev>',
+        to: [NOTIFY_GMAIL],
+        subject: subject,
+        html: htmlContent
+      })
+    });
+    if (!res.ok) {
+      console.error('Gmail 通知发送失败:', await res.text());
+    }
+  } catch (err) {
+    console.error('Gmail 通知请求异常:', err.message);
+  }
 }
 
-webpush.setVapidDetails(
-  'mailto:admin@chatroom.local',
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+function escapeHtmlServer(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 // ========== 静态资源（拦截敏感文件） ==========
 app.use((req, res, next) => {
@@ -70,12 +117,6 @@ if (fs.existsSync(USERS_FILE)) {
 }
 messages.forEach(m => { if (m.nickname) knownUsers.add(m.nickname); });
 
-// 保存设备推送订阅 { nickname: [subscriptionObj, ...] }
-let pushSubscriptions = {};
-if (fs.existsSync(SUBS_FILE)) {
-  try { pushSubscriptions = JSON.parse(fs.readFileSync(SUBS_FILE, 'utf8')); } catch (e) {}
-}
-
 let isSavingMsg = false;
 let pendingSaveMsg = false;
 async function saveMessages() {
@@ -91,52 +132,6 @@ async function saveMessages() {
 
 async function saveUsers() {
   try { await fs.promises.writeFile(USERS_FILE, JSON.stringify([...knownUsers], null, 2)); } catch (e) {}
-}
-
-async function saveSubscriptions() {
-  try { await fs.promises.writeFile(SUBS_FILE, JSON.stringify(pushSubscriptions, null, 2)); } catch (e) {}
-}
-
-// ========== Push API 接口 ==========
-app.get('/api/vapid-public-key', (req, res) => {
-  res.json({ publicKey: vapidKeys.publicKey });
-});
-
-app.post('/api/subscribe', (req, res) => {
-  const { nickname, subscription } = req.body || {};
-  if (!nickname || !subscription || !subscription.endpoint) {
-    return res.status(400).json({ error: '无效的订阅信息' });
-  }
-  if (!pushSubscriptions[nickname]) {
-    pushSubscriptions[nickname] = [];
-  }
-  const exists = pushSubscriptions[nickname].some(s => s.endpoint === subscription.endpoint);
-  if (!exists) {
-    pushSubscriptions[nickname].push(subscription);
-    saveSubscriptions();
-  }
-  res.json({ success: true });
-});
-
-// 向指定用户或所有离线用户发送系统级 Web Push
-async function sendPushToUser(targetNickname, payload) {
-  const subs = pushSubscriptions[targetNickname];
-  if (!subs || subs.length === 0) return;
-
-  const validSubs = [];
-  for (const sub of subs) {
-    try {
-      await webpush.sendNotification(sub, JSON.stringify(payload));
-      validSubs.push(sub);
-    } catch (err) {
-      // 410 或 404 表示订阅已过期，自动清理
-      if (err.statusCode !== 410 && err.statusCode !== 404) {
-        validSubs.push(sub);
-      }
-    }
-  }
-  pushSubscriptions[targetNickname] = validSubs;
-  saveSubscriptions();
 }
 
 // ========== 状态管理 ==========
@@ -218,7 +213,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 发送消息 + 离线推送
+  // 发送消息 + Gmail 离线通知
   socket.on('chat message', (msg) => {
     const nickname = socket.nickname;
     if (!nickname || !msg) return;
@@ -262,20 +257,15 @@ io.on('connection', (socket) => {
     saveMessages();
     io.emit('chat message', message);
 
-    // 给当前不在线（关掉网页）的所有已订阅用户发送系统横幅通知
-    for (const targetUser of Object.keys(pushSubscriptions)) {
-      if (targetUser !== nickname && !findSocketByNickname(targetUser)) {
-        sendPushToUser(targetUser, {
-          type: 'message',
-          title: `💬 ${nickname} 发来新消息`,
-          body: text || '[图片消息]',
-          tag: 'chatroom-offline-msg'
-        });
-      }
+    // 只要存在不在线的历史用户，且不在冷却期内，就发送 Gmail 邮件提醒
+    const allUsers = getAllUsersStatus();
+    const hasOfflineUser = allUsers.some(u => !u.online && u.nickname !== nickname);
+    if (hasOfflineUser) {
+      sendGmailNotification(nickname, text || '[图片消息]', false);
     }
   });
 
-  // 撤回消息
+  // 撤回消息（120秒内）
   socket.on('recall message', (msgId) => {
     if (!socket.nickname || !msgId) return;
     const index = messages.findIndex(m => m.id === msgId);
@@ -338,19 +328,14 @@ io.on('connection', (socket) => {
     if (targetSocket) {
       targetSocket.emit('poked', { from: socket.nickname });
     } else {
-      sendPushToUser(targetNickname, {
-        type: 'poke',
-        title: '👉 管理员戳了你一下',
-        body: `管理员 ${socket.nickname} 正在聊天室呼叫你！`,
-        tag: 'chatroom-offline-poke'
-      });
+      sendGmailNotification(socket.nickname, `管理员 ${socket.nickname} 戳了戳 ${targetNickname}`, false, targetNickname);
     }
     io.emit('system message', {
       text: `👉 管理员 ${socket.nickname} 戳了戳 ${targetNickname}`
     });
   });
 
-  // WebRTC 语音通话信令转发（支持关掉网页时的系统级来电推送）
+  // WebRTC 语音通话信令转发（支持离线时发送紧急来电 Gmail）
   socket.on('call-offer', ({ to, offer }) => {
     if (!socket.nickname || !to) return;
     const target = findSocketByNickname(to);
@@ -359,14 +344,12 @@ io.on('connection', (socket) => {
       target.emit('call-offer', { from: socket.nickname, offer });
     } else {
       pendingCalls.set(to, { from: socket.nickname, offer, time: Date.now() });
-      // 向未打开网页的目标用户发送系统级来电横幅推送
-      sendPushToUser(to, {
-        type: 'call',
-        caller: socket.nickname,
-        title: `📞 语音来电：${socket.nickname}`,
-        body: `${socket.nickname} 正在给你打语音电话，点击立即进入接听！`,
-        tag: 'incoming-voice-call'
-      });
+      sendGmailNotification(
+        socket.nickname,
+        `${socket.nickname} 正在向 ${to} 发起语音通话，请点击下方按钮进入聊天室接听！`,
+        true,
+        to
+      );
     }
   });
 
@@ -411,4 +394,9 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
   console.log(`服务器运行在端口 ${PORT}`);
+  if (RESEND_API_KEY && NOTIFY_GMAIL) {
+    console.log(`✅ Gmail 离线邮件通知已启用，接收邮箱: ${NOTIFY_GMAIL}`);
+  } else {
+    console.log('ℹ️ 未配置 RESEND_API_KEY 或 NOTIFY_GMAIL，跳过 Gmail 离线通知');
+  }
 });
