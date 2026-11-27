@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>聊天室</title>
+  <!-- 动态 Favicon 占位 -->
+  <link id="favicon" rel="icon" type="image/png" href="">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Microsoft YaHei', sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
@@ -12,36 +14,42 @@
       display: flex; justify-content: center; align-items: center; height: 100vh;
     }
     #loginScreen input {
-      padding: 10px 15px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; margin-right: 10px;
+      padding: 10px 15px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; margin-right: 10px; outline: none;
     }
     #loginScreen button {
       padding: 10px 20px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer;
     }
+    #loginScreen button:hover { background: #45a049; }
     
-    #chatScreen { display: none; flex: 1; flex-direction: column; max-width: 800px; margin: 0 auto; width: 100%; }
+    #chatScreen { display: none; flex: 1; flex-direction: column; max-width: 800px; margin: 0 auto; width: 100%; position: relative; height: 100vh; }
     
     #header {
       background: #4CAF50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
     }
     #header h2 { font-size: 20px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
     #onlineCount { font-size: 14px; opacity: 0.9; }
+    .header-btn {
+      background: rgba(255,255,255,0.2); color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+    }
+    .header-btn:hover { background: rgba(255,255,255,0.3); }
     
     #messages {
       flex: 1; overflow-y: auto; padding: 20px; background: white;
     }
     .message {
-      margin-bottom: 12px; padding: 10px 15px; background: #f8f9fa; border-radius: 10px; max-width: 80%;
+      margin-bottom: 12px; padding: 10px 15px; background: #f8f9fa; border-radius: 10px; max-width: 80%; width: fit-content;
     }
     .message .nickname { font-weight: bold; color: #333; margin-right: 8px; }
     .message .time { font-size: 12px; color: #999; margin-right: 8px; }
     .message .admin-badge { background: #ff9800; color: white; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-right: 6px; }
-    .message img { max-width: 200px; max-height: 200px; border-radius: 8px; margin-top: 5px; display: block; }
-    .message .text { word-break: break-all; }
+    .message img { max-width: 220px; max-height: 220px; border-radius: 8px; margin-top: 6px; display: block; cursor: pointer; }
+    .message .text { word-break: break-all; display: block; margin-top: 4px; line-height: 1.4; }
     
     .system-message { text-align: center; color: #999; font-size: 13px; margin: 10px 0; }
     
     #inputArea {
-      background: white; border-top: 1px solid #ddd; padding: 10px 15px; display: flex; align-items: center; gap: 8px;
+      background: white; border-top: 1px solid #ddd; padding: 10px 15px; display: flex; align-items: center; gap: 8px; position: relative;
     }
     #inputArea input[type="text"] {
       flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 20px; font-size: 14px; outline: none;
@@ -50,27 +58,28 @@
       padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 14px;
     }
     #sendBtn { background: #4CAF50; color: white; }
-    #emojiBtn { background: #f0f0f0; font-size: 18px; }
-    #imageBtn { background: #f0f0f0; font-size: 18px; }
+    #sendBtn:hover { background: #45a049; }
+    #emojiBtn, #imageBtn { background: #f0f0f0; font-size: 18px; padding: 6px 12px; }
     
     #emojiPanel {
       display: none; background: white; border: 1px solid #ddd; border-radius: 10px; padding: 10px;
-      position: absolute; bottom: 60px; right: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 300px;
+      position: absolute; bottom: 65px; left: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 320px; z-index: 10;
     }
-    #emojiPanel span { font-size: 24px; cursor: pointer; padding: 5px; display: inline-block; }
+    #emojiPanel span { font-size: 24px; cursor: pointer; padding: 5px; display: inline-block; user-select: none; }
     #emojiPanel span:hover { background: #f0f0f0; border-radius: 5px; }
     
     #adminPanel {
-      background: #fff3e0; border: 1px solid #ffb74d; border-radius: 8px; padding: 10px; margin: 10px 0;
+      background: #fff3e0; border-bottom: 1px solid #ffb74d; padding: 10px 20px; display: none; align-items: center; gap: 8px;
     }
-    #adminPanel input { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; margin-right: 5px; }
-    #adminPanel button { padding: 5px 10px; background: #ff9800; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    #adminPanel input { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; }
+    #adminPanel button { padding: 5px 12px; background: #ff9800; color: white; border: none; border-radius: 4px; cursor: pointer; }
     
     #onlineUsers {
-      background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin: 10px 0; max-height: 150px; overflow-y: auto;
+      background: #fafafa; border-bottom: 1px solid #ddd; padding: 8px 20px; max-height: 130px; overflow-y: auto;
     }
-    #onlineUsers .user { padding: 5px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+    #onlineUsers .user { padding: 4px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
     #onlineUsers .user:last-child { border-bottom: none; }
+    #onlineUsers .user .btn-group { display: flex; gap: 5px; }
     #onlineUsers .user .mute-btn { font-size: 12px; padding: 2px 8px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; }
     #onlineUsers .user .unmute-btn { font-size: 12px; padding: 2px 8px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
   </style>
@@ -79,7 +88,7 @@
 
   <!-- 登录界面 -->
   <div id="loginScreen">
-    <input type="text" id="nicknameInput" placeholder="请输入昵称" maxlength="20">
+    <input type="text" id="nicknameInput" placeholder="请输入昵称" maxlength="20" onkeydown="if(event.key==='Enter')joinChat()">
     <button onclick="joinChat()">进入聊天室</button>
   </div>
 
@@ -87,12 +96,16 @@
   <div id="chatScreen">
     <div id="header">
       <h2>💬 聊天室</h2>
-      <span id="onlineCount">在线人数: 0</span>
+      <div class="header-right">
+        <span id="onlineCount">在线人数: 0</span>
+        <button id="notifyToggleBtn" class="header-btn" onclick="toggleNotificationSetting()">🔔 提醒: 开</button>
+        <button id="toggleAdminBtn" class="header-btn" onclick="toggleAdminPanel()">⚙️ 管理</button>
+      </div>
     </div>
 
     <!-- 管理员登录面板 -->
-    <div id="adminPanel" style="display: none;">
-      <input type="password" id="adminPassword" placeholder="管理员密码">
+    <div id="adminPanel">
+      <input type="password" id="adminPassword" placeholder="管理员密码" onkeydown="if(event.key==='Enter')adminLogin()">
       <button onclick="adminLogin()">管理员登录</button>
       <span id="adminStatus"></span>
     </div>
@@ -103,16 +116,7 @@
     <!-- 消息区域 -->
     <div id="messages"></div>
 
-    <!-- 输入区域 -->
-    <div id="inputArea">
-      <button id="emojiBtn" onclick="toggleEmojiPanel()">😊</button>
-      <input type="text" id="messageInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendMessage()">
-      <button id="imageBtn" onclick="document.getElementById('imageInput').click()">🖼️</button>
-      <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="sendImage(this.files[0])">
-      <button id="sendBtn" onclick="sendMessage()">发送</button>
-    </div>
-
-    <!-- Emoji 面板 -->
+    <!-- Emoji 面板（已加入 🐔） -->
     <div id="emojiPanel">
       <span onclick="insertEmoji('😀')">😀</span>
       <span onclick="insertEmoji('😂')">😂</span>
@@ -134,6 +138,16 @@
       <span onclick="insertEmoji('😇')">😇</span>
       <span onclick="insertEmoji('🥳')">🥳</span>
       <span onclick="insertEmoji('🤯')">🤯</span>
+      <span onclick="insertEmoji('🐔')">🐔</span>
+    </div>
+
+    <!-- 输入区域 -->
+    <div id="inputArea">
+      <button id="emojiBtn" onclick="toggleEmojiPanel()">😊</button>
+      <input type="text" id="messageInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendMessage()">
+      <button id="imageBtn" onclick="document.getElementById('imageInput').click()">🖼️</button>
+      <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="sendImage(this.files[0])">
+      <button id="sendBtn" onclick="sendMessage()">发送</button>
     </div>
   </div>
 
@@ -142,33 +156,138 @@
     let socket;
     let myNickname = '';
     let isAdmin = false;
+    let currentUsers = [];
+    let notifyEnabled = true;
+    let unreadCount = 0;
 
-    // ========== 页面加载时恢复昵称 ==========
+    // ========== 动态生成标签页头像（带/不带小红点） ==========
+    function updateFavicon(hasBadge) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+
+      // 绘制绿色圆形聊天气泡背景
+      ctx.fillStyle = '#4CAF50';
+      ctx.beginPath();
+      ctx.arc(32, 32, 28, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 绘制白色聊天气泡主体
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(16, 20, 32, 22, 6);
+      ctx.fill();
+
+      // 气泡小尾巴
+      ctx.beginPath();
+      ctx.moveTo(22, 42);
+      ctx.lineTo(18, 49);
+      ctx.lineTo(30, 42);
+      ctx.closePath();
+      ctx.fill();
+
+      // 如果有未读消息，在右上角画小红点
+      if (hasBadge) {
+        ctx.fillStyle = '#ff3b30';
+        ctx.beginPath();
+        ctx.arc(50, 14, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 给小红点加一圈白边，视觉更清晰
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+      }
+
+      document.getElementById('favicon').href = canvas.toDataURL('image/png');
+    }
+
+    // ========== 播放清脆提示音（无需外部音频文件） ==========
+    function playNotificationSound() {
+      if (!notifyEnabled) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 音高
+        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08); // E6 音高
+
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      } catch (e) {
+        // 忽略浏览器自动播放策略限制
+      }
+    }
+
+    // ========== 页面加载初始化 ==========
     window.onload = function() {
+      updateFavicon(false); // 初始化默认绿色头像
       const savedNickname = localStorage.getItem('chatroom_nickname');
       if (savedNickname) {
         document.getElementById('nicknameInput').value = savedNickname;
       }
     };
 
-    // ========== 请求通知权限 ==========
+    // ========== 监听标签页切换：回到页面时清除小红点和未读计数 ==========
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        unreadCount = 0;
+        document.title = '聊天室';
+        updateFavicon(false);
+      }
+    });
+
+    // ========== 通知开关与权限请求 ==========
     function requestNotificationPermission() {
       if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
       }
     }
 
-    // ========== 新消息通知 ==========
+    function toggleNotificationSetting() {
+      notifyEnabled = !notifyEnabled;
+      const btn = document.getElementById('notifyToggleBtn');
+      btn.textContent = notifyEnabled ? '🔔 提醒: 开' : '🔕 提醒: 关';
+      if (notifyEnabled) {
+        requestNotificationPermission();
+        playNotificationSound();
+      }
+    }
+
+    // ========== 新消息通知处理 ==========
     function notifyNewMessage(msg) {
-      if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-        const notification = new Notification('新消息', {
-          body: `${msg.nickname}: ${msg.text || '[图片]'}`,
-          icon: 'https://img.icons8.com/color/48/chat.png'
-        });
-        notification.onclick = function() {
-          window.focus();
-          this.close();
-        };
+      // 忽略自己发的消息
+      if (msg.nickname === myNickname) return;
+
+      // 1. 播放声音提醒
+      playNotificationSound();
+
+      // 2. 如果页面在后台，更新标签页小红点、未读标题和桌面弹窗
+      if (document.hidden) {
+        unreadCount++;
+        document.title = `(${unreadCount}条新消息) 聊天室`;
+        updateFavicon(true);
+
+        if (notifyEnabled && 'Notification' in window && Notification.permission === 'granted') {
+          const notification = new Notification(`新消息 - ${msg.nickname}`, {
+            body: msg.text || '[图片消息]',
+            tag: 'chatroom-new-msg' // 避免连续刷屏弹窗
+          });
+          notification.onclick = function() {
+            window.focus();
+            this.close();
+          };
+        }
       }
     }
 
@@ -201,13 +320,17 @@
       });
       socket.on('history', (history) => history.forEach(msg => renderMessage(msg)));
       socket.on('system message', (data) => renderSystemMessage(data.text));
-      socket.on('online users', (users) => renderOnlineUsers(users));
+      socket.on('online users', (users) => {
+        currentUsers = users;
+        renderOnlineUsers(users);
+      });
       
       socket.on('admin login success', () => {
         isAdmin = true;
         document.getElementById('adminStatus').textContent = '✅ 管理员已登录';
         document.getElementById('adminStatus').style.color = 'green';
         document.getElementById('adminPassword').disabled = true;
+        renderOnlineUsers(currentUsers);
       });
       
       socket.on('admin login fail', () => {
@@ -216,12 +339,6 @@
       });
       
       socket.on('muted notice', (data) => alert(data.message));
-      socket.on('user muted', (data) => {
-        renderSystemMessage(`管理员已将 ${data.nickname} 禁言${data.duration === 0 ? '（永久）' : ` ${data.duration} 分钟`}`);
-      });
-      socket.on('user unmuted', (data) => {
-        renderSystemMessage(`管理员已解除 ${data.nickname} 的禁言`);
-      });
     }
 
     // ========== 发送消息 ==========
@@ -231,32 +348,28 @@
       if (!text) return;
       socket.emit('chat message', { text });
       input.value = '';
+      document.getElementById('emojiPanel').style.display = 'none';
     }
 
-    // ========== 发送图片（Base64 方案，不使用外部图床） ==========
+    // ========== 发送图片（Base64 方案） ==========
     function sendImage(file) {
       if (!file) return;
-      
-      // 限制图片大小（2MB），避免 JSON 文件过大
       if (file.size > 2 * 1024 * 1024) {
         alert('图片不能超过 2MB');
         return;
       }
-      
       const reader = new FileReader();
       reader.onload = function(e) {
-        const base64 = e.target.result;
-        socket.emit('chat message', { text: '', image: base64 });
+        socket.emit('chat message', { text: '', image: e.target.result });
       };
       reader.readAsDataURL(file);
-      
       document.getElementById('imageInput').value = '';
     }
 
     // ========== Emoji ==========
     function toggleEmojiPanel() {
       const panel = document.getElementById('emojiPanel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
     }
 
     function insertEmoji(emoji) {
@@ -266,13 +379,18 @@
     }
 
     // ========== 管理员 ==========
+    function toggleAdminPanel() {
+      const panel = document.getElementById('adminPanel');
+      panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+    }
+
     function adminLogin() {
       const password = document.getElementById('adminPassword').value;
       socket.emit('admin login', password);
     }
 
     function muteUser(nickname) {
-      const duration = prompt('请输入禁言时长（分钟），0 表示永久禁言：');
+      const duration = prompt(`请输入对 [${nickname}] 的禁言时长（分钟），0 表示永久禁言：`);
       if (duration === null) return;
       socket.emit('mute user', { nickname, duration: parseInt(duration) || 0 });
     }
@@ -292,14 +410,13 @@
         html += '<span class="admin-badge">管理员</span>';
       }
       html += `<span class="nickname">${escapeHtml(msg.nickname)}</span>`;
-      html += `<span class="time">${msg.time}</span>`;
+      html += `<span class="time">${escapeHtml(msg.time || '')}</span>`;
       
       if (msg.text) {
         html += `<span class="text">${escapeHtml(msg.text)}</span>`;
       }
-      
-      if (msg.image) {
-        html += `&lt;img src="${msg.image}" alt="图片"&gt;`;
+      if (msg.image && msg.image.startsWith('data:image/')) {
+        html += `<img src="${msg.image}" alt="图片" onclick="window.open(this.src)">`;
       }
       
       div.innerHTML = html;
@@ -325,14 +442,29 @@
         const div = document.createElement('div');
         div.className = 'user';
         
-        let html = `<span>${user.isAdmin ? '👑 ' : ''}${escapeHtml(user.nickname)}</span>`;
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = `${user.isAdmin ? '👑 ' : ''}${user.nickname}`;
+        div.appendChild(nameSpan);
         
         if (isAdmin && user.nickname !== myNickname) {
-          html += `<button class="mute-btn" onclick="muteUser('${user.nickname}')">禁言</button>`;
-          html += `<button class="unmute-btn" onclick="unmuteUser('${user.nickname}')">解禁</button>`;
+          const btnGroup = document.createElement('div');
+          btnGroup.className = 'btn-group';
+          
+          const muteBtn = document.createElement('button');
+          muteBtn.className = 'mute-btn';
+          muteBtn.textContent = '禁言';
+          muteBtn.onclick = () => muteUser(user.nickname);
+          
+          const unmuteBtn = document.createElement('button');
+          unmuteBtn.className = 'unmute-btn';
+          unmuteBtn.textContent = '解禁';
+          unmuteBtn.onclick = () => unmuteUser(user.nickname);
+          
+          btnGroup.appendChild(muteBtn);
+          btnGroup.appendChild(unmuteBtn);
+          div.appendChild(btnGroup);
         }
         
-        div.innerHTML = html;
         container.appendChild(div);
       });
       
