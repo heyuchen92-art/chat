@@ -8,7 +8,6 @@
   <meta name="apple-mobile-web-app-title" content="聊天室">
   <title>聊天室</title>
   <link id="favicon" rel="icon" type="image/png" href="">
-  <link rel="manifest" href="/manifest.json">
   <link id="appleTouchIcon" rel="apple-touch-icon" href="">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -316,7 +315,7 @@
         <input type="text" id="nicknameInput" placeholder="请输入你的昵称..." maxlength="20" onkeydown="if(event.key==='Enter')joinChat()">
         <button onclick="joinChat()">进入</button>
       </div>
-      <div class="ios-tip">🔔 允许通知后，即使关闭网页也能在锁屏收到来电与消息横幅<br>📱 iPhone/iPad 请先用 Safari「添加到主屏幕」再允许通知</div>
+      <div class="ios-tip">📧 已接入 Gmail 离线通知：即使关闭网页，新消息与来电也会发送邮件提醒</div>
     </div>
   </div>
 
@@ -326,7 +325,7 @@
       <h2>🔮 聊天室</h2>
       <div class="header-right">
         <span id="onlineCount">在线: 0/0</span>
-        <button id="notifyToggleBtn" class="header-btn" onclick="toggleNotificationSetting()">🔔 提醒: 开</button>
+        <button id="notifyToggleBtn" class="header-btn" onclick="toggleNotificationSetting()">🔔 铃声: 开</button>
         <button id="toggleAdminBtn" class="header-btn" onclick="toggleAdminPanel()">⚙️ 管理</button>
       </div>
     </div>
@@ -396,7 +395,6 @@
     let currentUsers = [];
     let notifyEnabled = true;
     let unreadCount = 0;
-    let swRegistration = null;
     let sharedAudioCtx = null;
 
     // ========== WebRTC 语音通话变量 ==========
@@ -427,49 +425,6 @@
         }
       ]
     };
-
-    // ========== Web Push 离线推送订阅工具 ==========
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-      return outputArray;
-    }
-
-    async function subscribeToWebPush(nickname) {
-      if (!nickname || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        swRegistration = reg;
-
-        const perm = await Notification.requestPermission();
-        if (perm !== 'granted') return;
-
-        const res = await fetch('/api/vapid-public-key');
-        const { publicKey } = await res.json();
-        if (!publicKey) return;
-
-        let subscription = await reg.pushManager.getSubscription();
-        if (!subscription) {
-          subscription = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey)
-          });
-        }
-
-        await fetch('/api/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nickname, subscription })
-        });
-      } catch (e) {
-        console.warn('Web Push 订阅未完成:', e);
-      }
-    }
 
     // ========== 解锁 iOS Safari 音频限制 ==========
     function unlockIOSAudio() {
@@ -550,32 +505,10 @@
         titleFlashInterval = null;
         document.title = '聊天室';
       }
-      if (swRegistration && swRegistration.getNotifications) {
-        swRegistration.getNotifications({ tag: 'incoming-voice-call' }).then((list) => {
-          list.forEach((n) => n.close());
-        }).catch(() => {});
-      }
     }
 
-    // ========== 注册 Service Worker ==========
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then((reg) => {
-        swRegistration = reg;
-      }).catch(() => {});
-
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'CALL_NOTIFICATION_ACTION') {
-          if (event.data.action === 'accept') {
-            acceptIncomingCall();
-          } else if (event.data.action === 'reject') {
-            rejectIncomingCall();
-          }
-        }
-      });
-    }
-
-    // ========== 弹出前台/后台来电横幅通知 ==========
-    async function showSystemCallNotification(callerName) {
+    // ========== 前台网页来电提醒 ==========
+    function showForegroundCallAlert(callerName) {
       updateFavicon(true);
       let toggle = false;
       clearInterval(titleFlashInterval);
@@ -585,33 +518,9 @@
       }, 800);
 
       if (!notifyEnabled || !('Notification' in window) || Notification.permission !== 'granted') return;
-
-      const iconUrl = document.getElementById('favicon').href;
-      const options = {
-        body: `${callerName} 正在请求与你语音通话，点击接听或挂断`,
-        icon: iconUrl,
-        badge: iconUrl,
-        tag: 'incoming-voice-call',
-        renotify: true,
-        requireInteraction: true,
-        vibrate: [300, 150, 300, 150, 300],
-        actions: [
-          { action: 'accept', title: '✅ 接听' },
-          { action: 'reject', title: '❌ 挂断' }
-        ]
-      };
-
-      if (swRegistration && swRegistration.showNotification) {
-        try {
-          await swRegistration.showNotification(`📞 语音来电：${callerName}`, options);
-          return;
-        } catch (e) {}
-      }
-
       try {
         const n = new Notification(`📞 语音来电：${callerName}`, {
-          body: options.body,
-          icon: iconUrl,
+          body: `${callerName} 正在请求与你语音通话，点击进入接听`,
           tag: 'incoming-voice-call'
         });
         n.onclick = () => { window.focus(); n.close(); };
@@ -669,12 +578,18 @@
       }
     });
 
+    function requestDesktopNotify() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        try { Notification.requestPermission().catch(() => {}); } catch (e) {}
+      }
+    }
+
     function toggleNotificationSetting() {
       unlockIOSAudio();
       notifyEnabled = !notifyEnabled;
-      document.getElementById('notifyToggleBtn').textContent = notifyEnabled ? '🔔 提醒: 开' : '🔕 提醒: 关';
+      document.getElementById('notifyToggleBtn').textContent = notifyEnabled ? '🔔 铃声: 开' : '🔕 铃声: 关';
       if (notifyEnabled) {
-        subscribeToWebPush(myNickname);
+        requestDesktopNotify();
         playNotificationSound();
       } else {
         stopRingtone();
@@ -706,9 +621,7 @@
       if (!nickname) { alert('请输入昵称'); return; }
       myNickname = nickname;
       localStorage.setItem('chatroom_nickname', nickname);
-      
-      // 绑定离线推送订阅
-      subscribeToWebPush(nickname);
+      requestDesktopNotify();
       
       socket = io();
       socket.emit('join', nickname);
@@ -788,7 +701,7 @@
       showCallBanner(
         isTargetOnline
           ? `📞 正在呼叫 ${targetNickname}...`
-          : `📞 正在呼叫 ${targetNickname}（已发送离线来电推送）...`,
+          : `📞 正在呼叫 ${targetNickname}（已发送 Gmail 来电通知）...`,
         [{ text: '取消呼叫', cls: 'btn-hangup', fn: () => hangupCall() }]
       );
     }
@@ -951,13 +864,6 @@
         void chatBox.offsetWidth;
         chatBox.classList.add('shake-effect');
         playNotificationSound();
-        if (document.hidden && notifyEnabled && 'Notification' in window && Notification.permission === 'granted') {
-          try {
-            new Notification('👉 你被管理员戳了一下', {
-              body: `管理员 ${data.from} 正在呼叫你！`, tag: 'chatroom-poke'
-            });
-          } catch (e) {}
-        }
       });
 
       socket.on('call-offer', ({ from, offer }) => {
@@ -970,7 +876,7 @@
         pendingOffer = offer;
 
         startRingtone();
-        showSystemCallNotification(from);
+        showForegroundCallAlert(from);
 
         showCallBanner(`📲 ${from} 邀请你进行语音通话...`, [
           { text: '接听', cls: 'btn-accept', fn: acceptIncomingCall },
@@ -1133,7 +1039,6 @@
         const div = document.createElement('div');
         div.className = 'user';
 
-        // 左侧：皇冠 + 名字 + 在线/离线状态徽章
         const leftDiv = document.createElement('div');
         leftDiv.className = 'user-left';
 
@@ -1149,7 +1054,6 @@
 
         div.appendChild(leftDiv);
         
-        // 右侧：无论在线还是离线，都显示操作按钮
         if (user.nickname !== myNickname) {
           const btnGroup = document.createElement('div');
           btnGroup.className = 'btn-group';
