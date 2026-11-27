@@ -139,12 +139,38 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // ========== 配置 ==========
-    const IMGBB_API_KEY = '你的ImgBB API Key'; // 需要替换为你的 API Key
-
     let socket;
     let myNickname = '';
     let isAdmin = false;
+
+    // ========== 页面加载时恢复昵称 ==========
+    window.onload = function() {
+      const savedNickname = localStorage.getItem('chatroom_nickname');
+      if (savedNickname) {
+        document.getElementById('nicknameInput').value = savedNickname;
+      }
+    };
+
+    // ========== 请求通知权限 ==========
+    function requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+
+    // ========== 新消息通知 ==========
+    function notifyNewMessage(msg) {
+      if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+        const notification = new Notification('新消息', {
+          body: `${msg.nickname}: ${msg.text || '[图片]'}`,
+          icon: 'https://img.icons8.com/color/48/chat.png'
+        });
+        notification.onclick = function() {
+          window.focus();
+          this.close();
+        };
+      }
+    }
 
     // ========== 登录 ==========
     function joinChat() {
@@ -154,8 +180,10 @@
         return;
       }
       myNickname = nickname;
-      socket = io();
+      localStorage.setItem('chatroom_nickname', nickname);
+      requestNotificationPermission();
       
+      socket = io();
       socket.emit('join', nickname);
       socket.emit('get history');
       
@@ -167,7 +195,10 @@
 
     // ========== Socket 事件监听 ==========
     function setupSocketListeners() {
-      socket.on('chat message', (msg) => renderMessage(msg));
+      socket.on('chat message', (msg) => {
+        renderMessage(msg);
+        notifyNewMessage(msg);
+      });
       socket.on('history', (history) => history.forEach(msg => renderMessage(msg)));
       socket.on('system message', (data) => renderSystemMessage(data.text));
       socket.on('online users', (users) => renderOnlineUsers(users));
@@ -202,30 +233,22 @@
       input.value = '';
     }
 
-    // ========== 发送图片（使用 ImgBB 图床） ==========
+    // ========== 发送图片（Base64 方案，不使用外部图床） ==========
     function sendImage(file) {
       if (!file) return;
       
-      const formData = new FormData();
-      formData.append('image', file);
+      // 限制图片大小（2MB），避免 JSON 文件过大
+      if (file.size > 2 * 1024 * 1024) {
+        alert('图片不能超过 2MB');
+        return;
+      }
       
-      fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-        method: 'POST',
-        body: formData
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          const imageUrl = data.data.url;
-          socket.emit('chat message', { text: '', image: imageUrl });
-        } else {
-          alert('图片上传失败');
-        }
-      })
-      .catch(err => {
-        console.error('上传失败:', err);
-        alert('图片上传失败');
-      });
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const base64 = e.target.result;
+        socket.emit('chat message', { text: '', image: base64 });
+      };
+      reader.readAsDataURL(file);
       
       document.getElementById('imageInput').value = '';
     }
