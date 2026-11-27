@@ -16,6 +16,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
 const MAX_HISTORY = 100;
+const RECALL_LIMIT_MS = 120 * 1000; // 120秒撤回限制
 
 // ========== 静态资源（拦截敏感文件） ==========
 app.use((req, res, next) => {
@@ -127,11 +128,14 @@ io.on('connection', (socket) => {
 
     if (!text && !image) return;
 
+    const now = Date.now();
     const message = {
+      id: `${now}_${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: now,
       nickname,
       text,
       image,
-      time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+      time: new Date(now).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       isAdmin: socket.isAdmin || false
     };
 
@@ -142,6 +146,40 @@ io.on('connection', (socket) => {
 
     saveMessages();
     io.emit('chat message', message);
+  });
+
+  // 撤回消息（普通用户120秒内，管理员无限制）
+  socket.on('recall message', (msgId) => {
+    if (!socket.nickname || !msgId) return;
+
+    const index = messages.findIndex(m => m.id === msgId);
+    if (index === -1) {
+      socket.emit('recall error', '该消息已不存在或已被撤回');
+      return;
+    }
+
+    const targetMsg = messages[index];
+    const isOwner = targetMsg.nickname === socket.nickname;
+
+    if (!isOwner && !socket.isAdmin) {
+      socket.emit('recall error', '无权撤回他人消息');
+      return;
+    }
+
+    if (!socket.isAdmin && Date.now() - targetMsg.timestamp > RECALL_LIMIT_MS) {
+      socket.emit('recall error', '发送已超过 120 秒，无法撤回');
+      return;
+    }
+
+    // 从历史记录中彻底移除，防止刷新后重新加载
+    messages.splice(index, 1);
+    saveMessages();
+
+    const recallText = socket.isAdmin && !isOwner
+      ? `管理员 ${socket.nickname} 撤回了 ${targetMsg.nickname} 的一条消息`
+      : `「${targetMsg.nickname}」撤回了一条消息`;
+
+    io.emit('message recalled', { id: msgId, text: recallText });
   });
 
   // 禁言与解除禁言
@@ -181,7 +219,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ========== WebRTC 语音通话信令转发（极低内存/CPU占用） ==========
+  // WebRTC 语音通话信令转发
   socket.on('call-offer', ({ to, offer }) => {
     if (!socket.nickname || !to) return;
     const target = findSocketByNickname(to);
