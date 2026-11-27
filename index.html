@@ -29,7 +29,7 @@
       background: radial-gradient(circle at top left, #1e0b36, #0b0616 60%, #140826);
       color: var(--text-main);
       height: 100vh;
-      height: 100dvh; /* 适配 iOS Safari 动态视口高度 */
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -233,6 +233,12 @@
       background: linear-gradient(135deg, #f59e0b, #d97706); color: white;
       font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 6px;
     }
+    .recall-btn {
+      font-size: 11px; color: var(--text-muted); background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px;
+      padding: 1px 6px; cursor: pointer; margin-left: 4px; transition: all 0.2s;
+    }
+    .recall-btn:hover { color: #fda4af; border-color: rgba(253, 164, 175, 0.45); background: rgba(244, 63, 94, 0.2); }
     .message img { max-width: 220px; max-height: 220px; border-radius: 12px; margin-top: 6px; display: block; cursor: pointer; }
     .message .text { word-break: break-word; display: block; line-height: 1.5; font-size: 15px; color: #faf5ff; }
 
@@ -251,8 +257,7 @@
     }
     #inputArea input[type="text"] {
       flex: 1; padding: 10px 14px; border: 1px solid var(--glass-border); border-radius: 20px;
-      font-size: 16px; /* 防止 iOS 聚焦输入框时页面自动放大 */
-      color: var(--text-main); background: rgba(255, 255, 255, 0.07); outline: none;
+      font-size: 16px; color: var(--text-main); background: rgba(255, 255, 255, 0.07); outline: none;
     }
     #inputArea input[type="text"]::placeholder { color: var(--text-muted); }
     #inputArea button { border: 1px solid var(--glass-border); border-radius: 18px; cursor: pointer; }
@@ -282,7 +287,6 @@
   <div class="ambient-orb orb-2"></div>
   <div class="ambient-orb orb-3"></div>
 
-  <!-- 隐藏的远程音频播放器（兼容 iOS 内联播放） -->
   <audio id="remoteAudio" autoplay playsinline webkit-playsinline></audio>
 
   <!-- 登录界面 -->
@@ -374,7 +378,7 @@
     let notifyEnabled = true;
     let unreadCount = 0;
     let swRegistration = null;
-    let sharedAudioCtx = null; // 全局共享 AudioContext，解决 iOS Safari 后台禁音限制
+    let sharedAudioCtx = null;
 
     // ========== WebRTC 语音通话变量 ==========
     let peerConnection = null;
@@ -405,7 +409,7 @@
       ]
     };
 
-    // ========== 解锁 iOS Safari 音频播放限制 ==========
+    // ========== 解锁 iOS Safari 音频限制 ==========
     function unlockIOSAudio() {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -416,7 +420,6 @@
         if (sharedAudioCtx.state === 'suspended') {
           sharedAudioCtx.resume();
         }
-        // 播放一帧极短静音触发 iOS 硬件音频通道激活
         const buffer = sharedAudioCtx.createBuffer(1, 1, 22050);
         const source = sharedAudioCtx.createBufferSource();
         source.buffer = buffer;
@@ -425,7 +428,6 @@
       } catch (e) {}
     }
 
-    // 在任意首次触摸/点击时自动解锁 iOS 音频
     document.addEventListener('touchstart', unlockIOSAudio, { once: true });
     document.addEventListener('click', unlockIOSAudio, { once: true });
 
@@ -450,8 +452,8 @@
 
           osc1.type = 'sine';
           osc2.type = 'sine';
-          osc1.frequency.setValueAtTime(784, now + offset);     // G5
-          osc2.frequency.setValueAtTime(1046.5, now + offset);  // C6
+          osc1.frequency.setValueAtTime(784, now + offset);
+          osc2.frequency.setValueAtTime(1046.5, now + offset);
 
           gain.gain.setValueAtTime(0.18, now + offset);
           gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.18);
@@ -510,7 +512,7 @@
       });
     }
 
-    // ========== 弹出系统级来电横幅通知（兼容 iOS 主屏幕 PWA 与桌面端） ==========
+    // ========== 弹出系统级来电横幅通知 ==========
     async function showSystemCallNotification(callerName) {
       updateFavicon(true);
       let toggle = false;
@@ -851,6 +853,19 @@
         currentUsers = users;
         renderOnlineUsers(users);
       });
+
+      // 消息被撤回实时同步
+      socket.on('message recalled', ({ id, text }) => {
+        const msgEl = document.querySelector(`.message[data-id="${id}"]`);
+        if (msgEl) {
+          const sysDiv = document.createElement('div');
+          sysDiv.className = 'system-message';
+          sysDiv.textContent = text;
+          msgEl.replaceWith(sysDiv);
+        }
+      });
+
+      socket.on('recall error', (errMsg) => alert(errMsg));
       
       socket.on('admin login success', () => {
         isAdmin = true;
@@ -943,6 +958,11 @@
       document.getElementById('imageInput').value = '';
     }
 
+    function recallMessage(msgId) {
+      if (!msgId) return;
+      socket.emit('recall message', msgId);
+    }
+
     function toggleEmojiPanel() {
       const panel = document.getElementById('emojiPanel');
       panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
@@ -979,19 +999,53 @@
       const container = document.getElementById('messages');
       const div = document.createElement('div');
       div.className = 'message' + (msg.nickname === myNickname ? ' self' : '');
+      if (msg.id) div.dataset.id = msg.id;
       
-      let html = '<div class="message-meta">';
-      if (msg.isAdmin) html += '<span class="admin-badge">管理员</span>';
-      html += `<span class="nickname">${escapeHtml(msg.nickname)}</span>`;
-      html += `<span class="time">${escapeHtml(msg.time || '')}</span>`;
-      html += '</div>';
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'message-meta';
+
+      let metaHtml = '';
+      if (msg.isAdmin) metaHtml += '<span class="admin-badge">管理员</span>';
+      metaHtml += `<span class="nickname">${escapeHtml(msg.nickname)}</span>`;
+      metaHtml += `<span class="time">${escapeHtml(msg.time || '')}</span>`;
+      metaDiv.innerHTML = metaHtml;
+
+      // 判断是否显示撤回按钮（自己120秒内可撤回，管理员随时可撤回）
+      const isSelf = msg.nickname === myNickname;
+      const elapsed = msg.timestamp ? (Date.now() - msg.timestamp) : Infinity;
+      if (msg.id && ((isSelf && elapsed < 120000) || isAdmin)) {
+        const recallBtn = document.createElement('button');
+        recallBtn.className = 'recall-btn';
+        recallBtn.textContent = '撤回';
+        recallBtn.onclick = () => recallMessage(msg.id);
+        metaDiv.appendChild(recallBtn);
+
+        // 如果是普通用户且在120秒内，到期自动移除撤回按钮
+        if (isSelf && !isAdmin && elapsed < 120000) {
+          setTimeout(() => {
+            if (recallBtn && recallBtn.parentNode) {
+              recallBtn.remove();
+            }
+          }, 120000 - elapsed);
+        }
+      }
+
+      div.appendChild(metaDiv);
       
-      if (msg.text) html += `<span class="text">${escapeHtml(msg.text)}</span>`;
+      if (msg.text) {
+        const textSpan = document.createElement('span');
+        textSpan.className = 'text';
+        textSpan.textContent = msg.text;
+        div.appendChild(textSpan);
+      }
       if (msg.image && msg.image.startsWith('data:image/')) {
-        html += `<img src="${msg.image}" alt="图片" onclick="window.open(this.src)">`;
+        const img = document.createElement('img');
+        img.src = msg.image;
+        img.alt = '图片';
+        img.onclick = () => window.open(img.src);
+        div.appendChild(img);
       }
       
-      div.innerHTML = html;
       container.appendChild(div);
       container.scrollTop = container.scrollHeight;
     }
