@@ -129,7 +129,7 @@
       color: white; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; cursor: pointer; font-size: 13px;
     }
 
-    /* 语音通话悬浮条（液态玻璃） */
+    /* 语音通话状态横幅 */
     #callBanner {
       display: none;
       background: linear-gradient(135deg, rgba(126, 34, 206, 0.75), rgba(76, 29, 149, 0.85));
@@ -369,11 +369,23 @@
     let isMuted = false;
     let callTimer = null;
     let callSeconds = 0;
+    let iceCandidateQueue = []; // 缓存提前到达的 ICE 路径
 
+    // 配置 STUN + 免费公共 TURN 中继服务器，解决跨网防火墙无法直连无声问题
     const rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
       ]
     };
 
@@ -495,6 +507,8 @@
       pc.ontrack = (event) => {
         const remoteAudio = document.getElementById('remoteAudio');
         remoteAudio.srcObject = event.streams[0];
+        // 显式触发音频播放，防止浏览器拦截自动播放
+        remoteAudio.play().catch(err => console.warn('音频播放需交互:', err));
       };
 
       pc.onconnectionstatechange = () => {
@@ -506,6 +520,16 @@
       };
 
       return pc;
+    }
+
+    async function flushIceQueue() {
+      if (!peerConnection || !peerConnection.remoteDescription) return;
+      while (iceCandidateQueue.length > 0) {
+        const candidate = iceCandidateQueue.shift();
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {}
+      }
     }
 
     // 发起语音呼叫
@@ -521,6 +545,7 @@
         return;
       }
 
+      iceCandidateQueue = [];
       callTarget = targetNickname;
       peerConnection = createPeerConnection(targetNickname);
       localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -549,6 +574,8 @@
       localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
       await peerConnection.setRemoteDescription(new RTCSessionDescription(pendingOffer));
+      await flushIceQueue();
+
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
 
@@ -634,6 +661,7 @@
       }
       callTarget = null;
       pendingOffer = null;
+      iceCandidateQueue = [];
       isMuted = false;
       document.getElementById('callBanner').style.display = 'none';
       if (notice) renderSystemMessage(`📞 ${notice}`);
@@ -687,6 +715,7 @@
           socket.emit('call-reject', { to: from, reason: '对方正在通话中' });
           return;
         }
+        iceCandidateQueue = [];
         callTarget = from;
         pendingOffer = offer;
         playNotificationSound();
@@ -704,15 +733,19 @@
       socket.on('call-answer', async ({ answer }) => {
         if (peerConnection) {
           await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+          await flushIceQueue();
           startCallTimer();
         }
       });
 
       socket.on('call-ice', async ({ candidate }) => {
-        if (peerConnection && candidate) {
+        if (!candidate) return;
+        if (peerConnection && peerConnection.remoteDescription) {
           try {
             await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
           } catch (e) {}
+        } else {
+          iceCandidateQueue.push(candidate);
         }
       });
 
@@ -819,14 +852,12 @@
           const btnGroup = document.createElement('div');
           btnGroup.className = 'btn-group';
 
-          // 所有在线用户都可以发起一对一语音通话
           const voiceBtn = document.createElement('button');
           voiceBtn.className = 'voice-btn';
           voiceBtn.textContent = '📞 语音';
           voiceBtn.onclick = () => startVoiceCall(user.nickname);
           btnGroup.appendChild(voiceBtn);
 
-          // 管理员专属按钮
           if (isAdmin) {
             const pokeBtn = document.createElement('button');
             pokeBtn.className = 'poke-btn';
