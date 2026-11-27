@@ -7,7 +7,6 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 
-// 调高传输上限至 5MB，防止 2MB 图片转 Base64 后超出默认限制
 const io = new Server(server, {
   maxHttpBufferSize: 5e6
 });
@@ -18,7 +17,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
 const MAX_HISTORY = 100;
 
-// ========== 静态资源（拦截同目录下的敏感文件） ==========
+// ========== 静态资源（拦截敏感文件） ==========
 app.use((req, res, next) => {
   const blockedFiles = ['/messages.json', '/server.js', '/package.json', '/package-lock.json'];
   if (blockedFiles.includes(req.path.toLowerCase())) {
@@ -29,7 +28,7 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname)));
 
-// ========== 消息持久化（JSON 文件） ==========
+// ========== 消息持久化 ==========
 let messages = [];
 if (fs.existsSync(MESSAGES_FILE)) {
   try {
@@ -65,16 +64,20 @@ async function saveMessages() {
 const mutedUsers = new Map();
 const pokeCooldown = new Map();
 
+function findSocketByNickname(nickname) {
+  for (const [, s] of io.of('/').sockets) {
+    if (s.nickname === nickname) return s;
+  }
+  return null;
+}
+
 // ========== Socket.IO ==========
 io.on('connection', (socket) => {
-  console.log('用户连接:', socket.id);
-
   // 用户加入
   socket.on('join', (rawNickname) => {
     let nickname = String(rawNickname || '').trim().slice(0, 20);
     if (!nickname) return;
 
-    // 防止重名冲突
     const onlineUsers = getOnlineUsers();
     if (onlineUsers.some(u => u.nickname === nickname)) {
       nickname = `${nickname}_${Math.floor(10 + Math.random() * 90)}`;
@@ -104,7 +107,6 @@ io.on('connection', (socket) => {
     const nickname = socket.nickname;
     if (!nickname || !msg) return;
 
-    // 禁言检查
     const muteUntil = mutedUsers.get(nickname);
     if (muteUntil !== undefined) {
       if (muteUntil === 0 || Date.now() < muteUntil) {
@@ -142,7 +144,7 @@ io.on('connection', (socket) => {
     io.emit('chat message', message);
   });
 
-  // 禁言用户（仅管理员）
+  // 禁言与解除禁言
   socket.on('mute user', (data) => {
     if (!socket.isAdmin || !data) return;
     const { nickname, duration } = data;
@@ -155,36 +157,66 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 解除禁言（仅管理员）
   socket.on('unmute user', (nickname) => {
     if (!socket.isAdmin || !nickname) return;
     mutedUsers.delete(nickname);
     io.emit('system message', { text: `管理员已解除 ${nickname} 的禁言` });
   });
 
-  // 戳一戳功能（仅管理员，Beta）
+  // 管理员戳一戳（Beta）
   socket.on('poke user', (targetNickname) => {
     if (!socket.isAdmin || !targetNickname) return;
 
-    // 3秒防刷冷却
     const now = Date.now();
     const lastPoke = pokeCooldown.get(socket.id) || 0;
     if (now - lastPoke < 3000) return;
     pokeCooldown.set(socket.id, now);
 
-    let targetSocket = null;
-    for (const [, s] of io.of('/').sockets) {
-      if (s.nickname === targetNickname) {
-        targetSocket = s;
-        break;
-      }
-    }
-
+    const targetSocket = findSocketByNickname(targetNickname);
     if (targetSocket) {
       targetSocket.emit('poked', { from: socket.nickname });
       io.emit('system message', {
         text: `👉 管理员 ${socket.nickname} 戳了戳 ${targetNickname}`
       });
+    }
+  });
+
+  // ========== WebRTC 语音通话信令转发（极低内存/CPU占用） ==========
+  socket.on('call-offer', ({ to, offer }) => {
+    if (!socket.nickname || !to) return;
+    const target = findSocketByNickname(to);
+    if (target) {
+      target.emit('call-offer', { from: socket.nickname, offer });
+    } else {
+      socket.emit('call-ended', { reason: '对方已离线' });
+    }
+  });
+
+  socket.on('call-answer', ({ to, answer }) => {
+    const target = findSocketByNickname(to);
+    if (target) {
+      target.emit('call-answer', { from: socket.nickname, answer });
+    }
+  });
+
+  socket.on('call-ice', ({ to, candidate }) => {
+    const target = findSocketByNickname(to);
+    if (target) {
+      target.emit('call-ice', { from: socket.nickname, candidate });
+    }
+  });
+
+  socket.on('call-reject', ({ to, reason }) => {
+    const target = findSocketByNickname(to);
+    if (target) {
+      target.emit('call-reject', { from: socket.nickname, reason: reason || '对方拒绝了通话' });
+    }
+  });
+
+  socket.on('call-hangup', ({ to }) => {
+    const target = findSocketByNickname(to);
+    if (target) {
+      target.emit('call-hangup', { from: socket.nickname });
     }
   });
 
@@ -213,7 +245,6 @@ function getOnlineUsers() {
   return users;
 }
 
-// ========== 启动 ==========
 server.listen(PORT, () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
+  console.log(`服务器运行在端口 ${PORT}`);
 });
