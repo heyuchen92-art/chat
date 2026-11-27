@@ -2,16 +2,20 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="聊天室">
   <title>聊天室</title>
   <link id="favicon" rel="icon" type="image/png" href="">
+  <link id="appleTouchIcon" rel="apple-touch-icon" href="">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     :root {
       --bg-deep: #0b0616;
       --glass-bg: rgba(28, 17, 52, 0.45);
-      --glass-bg-strong: rgba(22, 12, 42, 0.78);
+      --glass-bg-strong: rgba(22, 12, 42, 0.82);
       --glass-border: rgba(216, 180, 254, 0.22);
       --glass-highlight: rgba(255, 255, 255, 0.12);
       --accent-purple: #9333ea;
@@ -21,10 +25,11 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
       background: radial-gradient(circle at top left, #1e0b36, #0b0616 60%, #140826);
       color: var(--text-main);
       height: 100vh;
+      height: 100dvh; /* 适配 iOS Safari 动态视口高度 */
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -58,10 +63,11 @@
 
     /* 登录界面 */
     #loginScreen {
-      position: relative; z-index: 1; display: flex; justify-content: center; align-items: center; height: 100vh; padding: 20px;
+      position: relative; z-index: 1; display: flex; justify-content: center; align-items: center;
+      height: 100vh; height: 100dvh; padding: 20px;
     }
     .login-card {
-      padding: 36px 32px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; max-width: 380px;
+      padding: 36px 28px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; max-width: 380px;
     }
     .login-card h1 {
       font-size: 24px; font-weight: 600; letter-spacing: 1px;
@@ -70,14 +76,17 @@
     }
     .login-row { display: flex; width: 100%; gap: 10px; }
     #loginScreen input {
-      flex: 1; padding: 12px 16px; font-size: 15px; color: var(--text-main);
+      flex: 1; padding: 12px 16px; font-size: 16px; color: var(--text-main);
       background: rgba(255, 255, 255, 0.07); border: 1px solid var(--glass-border); border-radius: 14px; outline: none;
     }
     #loginScreen input::placeholder { color: var(--text-muted); }
     #loginScreen button {
       padding: 12px 22px; font-size: 15px; font-weight: 600;
       background: linear-gradient(135deg, #9333ea, #6b21a8); color: white;
-      border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 14px; cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 14px; cursor: pointer; white-space: nowrap;
+    }
+    .ios-tip {
+      font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.5;
     }
 
     /* 聊天主容器 */
@@ -99,30 +108,30 @@
 
     /* 顶部栏 */
     #header {
-      background: rgba(38, 20, 71, 0.55); backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--glass-border); padding: 15px 22px;
+      background: rgba(38, 20, 71, 0.55); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: calc(12px + env(safe-area-inset-top)) 18px 12px;
       display: flex; justify-content: space-between; align-items: center;
     }
-    #header h2 { font-size: 19px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-    .header-right { display: flex; align-items: center; gap: 10px; }
+    #header h2 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
     #onlineCount {
-      font-size: 13px; color: var(--text-muted); background: rgba(255, 255, 255, 0.06);
-      padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 12px; color: var(--text-muted); background: rgba(255, 255, 255, 0.06);
+      padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
     }
     .header-btn {
       background: rgba(255, 255, 255, 0.09); color: var(--text-main);
-      border: 1px solid var(--glass-border); padding: 5px 12px; border-radius: 12px; cursor: pointer; font-size: 12px;
+      border: 1px solid var(--glass-border); padding: 5px 10px; border-radius: 12px; cursor: pointer; font-size: 12px;
     }
-    .header-btn:hover { background: rgba(168, 85, 247, 0.35); border-color: var(--accent-glow); }
 
     /* 管理员面板 */
     #adminPanel {
       background: rgba(59, 24, 95, 0.55); border-bottom: 1px solid var(--glass-border);
-      padding: 10px 22px; display: none; align-items: center; gap: 10px;
+      padding: 10px 18px; display: none; align-items: center; gap: 8px; flex-wrap: wrap;
     }
     #adminPanel input {
       padding: 6px 12px; border: 1px solid var(--glass-border); border-radius: 10px;
-      background: rgba(0, 0, 0, 0.35); color: var(--text-main); outline: none; color-scheme: dark;
+      background: rgba(0, 0, 0, 0.35); color: var(--text-main); outline: none; color-scheme: dark; font-size: 14px;
     }
     #adminPanel button {
       padding: 6px 14px; background: linear-gradient(135deg, #d97706, #b45309);
@@ -133,26 +142,26 @@
     #callBanner {
       display: none;
       background: linear-gradient(135deg, rgba(126, 34, 206, 0.85), rgba(76, 29, 149, 0.92));
-      backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid rgba(216, 180, 254, 0.45);
-      padding: 12px 22px;
+      padding: 12px 18px;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       animation: msgPop 0.25s ease-out;
     }
-    .call-info { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; }
+    .call-info { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; }
     .pulse-dot {
-      width: 10px; height: 10px; border-radius: 50%; background: #4ade80;
+      width: 10px; height: 10px; border-radius: 50%; background: #4ade80; flex-shrink: 0;
       box-shadow: 0 0 10px #4ade80; animation: pulseAnim 1.2s infinite;
     }
     @keyframes pulseAnim {
       0%, 100% { transform: scale(1); opacity: 1; }
       50% { transform: scale(1.4); opacity: 0.6; }
     }
-    .call-actions { display: flex; gap: 8px; }
+    .call-actions { display: flex; gap: 8px; flex-shrink: 0; }
     .call-btn {
-      padding: 6px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.25);
+      padding: 6px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.25);
       color: white; font-size: 12px; font-weight: 600; cursor: pointer;
     }
     .btn-accept { background: #16a34a; }
@@ -162,48 +171,49 @@
     /* 在线用户栏 */
     #onlineUsers {
       background: rgba(18, 10, 34, 0.45); border-bottom: 1px solid var(--glass-border);
-      padding: 8px 22px; max-height: 130px; overflow-y: auto;
+      padding: 8px 18px; max-height: 130px; overflow-y: auto;
     }
     #onlineUsers .user {
       padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      display: flex; justify-content: space-between; align-items: center; font-size: 13px;
+      display: flex; justify-content: space-between; align-items: center; font-size: 13px; gap: 8px;
     }
     #onlineUsers .user:last-child { border-bottom: none; }
-    #onlineUsers .user .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    #onlineUsers .user .btn-group { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .voice-btn {
-      font-size: 11px; padding: 3px 9px;
+      font-size: 11px; padding: 4px 9px;
       background: rgba(56, 189, 248, 0.25); border: 1px solid rgba(125, 211, 252, 0.4);
       color: #bae6fd; border-radius: 8px; cursor: pointer;
     }
-    .voice-btn:hover { background: rgba(56, 189, 248, 0.45); }
     .poke-btn {
-      font-size: 11px; padding: 3px 9px;
+      font-size: 11px; padding: 4px 9px;
       background: rgba(168, 85, 247, 0.35); border: 1px solid rgba(216, 180, 254, 0.45);
       color: #f3e8ff; border-radius: 8px; cursor: pointer;
     }
     .mute-btn {
-      font-size: 11px; padding: 3px 9px;
+      font-size: 11px; padding: 4px 9px;
       background: rgba(239, 68, 68, 0.35); border: 1px solid rgba(248, 113, 113, 0.4);
       color: #fecaca; border-radius: 8px; cursor: pointer;
     }
     .unmute-btn {
-      font-size: 11px; padding: 3px 9px;
+      font-size: 11px; padding: 4px 9px;
       background: rgba(34, 197, 94, 0.3); border: 1px solid rgba(74, 222, 128, 0.4);
       color: #bbf7d0; border-radius: 8px; cursor: pointer;
     }
 
     /* 消息区域 */
     #messages {
-      flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px;
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;
     }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(192, 132, 252, 0.25); border-radius: 10px; }
 
     .message {
-      padding: 11px 16px; background: rgba(255, 255, 255, 0.07); backdrop-filter: blur(12px);
+      padding: 10px 14px; background: rgba(255, 255, 255, 0.07); backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 18px 18px 18px 4px; max-width: 78%; width: fit-content; align-self: flex-start;
+      border-radius: 18px 18px 18px 4px; max-width: 82%; width: fit-content; align-self: flex-start;
       animation: msgPop 0.22s ease-out;
     }
     .message.self {
@@ -223,8 +233,8 @@
       background: linear-gradient(135deg, #f59e0b, #d97706); color: white;
       font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 6px;
     }
-    .message img { max-width: 230px; max-height: 230px; border-radius: 12px; margin-top: 6px; display: block; cursor: pointer; }
-    .message .text { word-break: break-word; display: block; line-height: 1.5; font-size: 14.5px; color: #faf5ff; }
+    .message img { max-width: 220px; max-height: 220px; border-radius: 12px; margin-top: 6px; display: block; cursor: pointer; }
+    .message .text { word-break: break-word; display: block; line-height: 1.5; font-size: 15px; color: #faf5ff; }
 
     .system-message {
       align-self: center; text-align: center; color: var(--text-muted); font-size: 12px;
@@ -234,33 +244,35 @@
 
     /* 底部输入区 */
     #inputArea {
-      background: rgba(28, 16, 52, 0.6); backdrop-filter: blur(20px);
-      border-top: 1px solid var(--glass-border); padding: 12px 18px;
-      display: flex; align-items: center; gap: 10px; position: relative;
+      background: rgba(28, 16, 52, 0.65); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--glass-border);
+      padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+      display: flex; align-items: center; gap: 8px; position: relative;
     }
     #inputArea input[type="text"] {
-      flex: 1; padding: 11px 16px; border: 1px solid var(--glass-border); border-radius: 20px;
-      font-size: 14px; color: var(--text-main); background: rgba(255, 255, 255, 0.07); outline: none;
+      flex: 1; padding: 10px 14px; border: 1px solid var(--glass-border); border-radius: 20px;
+      font-size: 16px; /* 防止 iOS 聚焦输入框时页面自动放大 */
+      color: var(--text-main); background: rgba(255, 255, 255, 0.07); outline: none;
     }
     #inputArea input[type="text"]::placeholder { color: var(--text-muted); }
     #inputArea button { border: 1px solid var(--glass-border); border-radius: 18px; cursor: pointer; }
     #sendBtn {
-      padding: 10px 20px; background: linear-gradient(135deg, #9333ea, #7e22ce);
-      color: white; font-size: 14px; font-weight: 600;
+      padding: 10px 16px; background: linear-gradient(135deg, #9333ea, #7e22ce);
+      color: white; font-size: 14px; font-weight: 600; white-space: nowrap;
     }
-    #emojiBtn, #imageBtn { background: rgba(255, 255, 255, 0.08); font-size: 18px; padding: 8px 12px; }
+    #emojiBtn, #imageBtn { background: rgba(255, 255, 255, 0.08); font-size: 18px; padding: 8px 10px; }
 
     /* Emoji 面板 */
     #emojiPanel {
       display: none; background: var(--glass-bg-strong); backdrop-filter: blur(26px);
+      -webkit-backdrop-filter: blur(26px);
       border: 1px solid var(--glass-border); border-radius: 18px; padding: 12px;
-      position: absolute; bottom: 72px; left: 18px; max-width: 325px; z-index: 20;
+      position: absolute; bottom: calc(68px + env(safe-area-inset-bottom)); left: 14px; max-width: 315px; z-index: 20;
     }
     #emojiPanel span { font-size: 24px; cursor: pointer; padding: 6px; display: inline-block; user-select: none; }
-    #emojiPanel span:hover { background: rgba(192, 132, 252, 0.25); border-radius: 10px; }
 
     @media (max-width: 600px) {
-      #chatScreen { margin: 0; width: 100%; height: 100vh; border-radius: 0; border: none; }
+      #chatScreen { margin: 0; width: 100%; height: 100vh; height: 100dvh; border-radius: 0; border: none; }
     }
   </style>
 </head>
@@ -270,7 +282,8 @@
   <div class="ambient-orb orb-2"></div>
   <div class="ambient-orb orb-3"></div>
 
-  <audio id="remoteAudio" autoplay playsinline></audio>
+  <!-- 隐藏的远程音频播放器（兼容 iOS 内联播放） -->
+  <audio id="remoteAudio" autoplay playsinline webkit-playsinline></audio>
 
   <!-- 登录界面 -->
   <div id="loginScreen">
@@ -280,6 +293,7 @@
         <input type="text" id="nicknameInput" placeholder="请输入你的昵称..." maxlength="20" onkeydown="if(event.key==='Enter')joinChat()">
         <button onclick="joinChat()">进入</button>
       </div>
+      <div class="ios-tip">📱 iPhone/iPad 用户建议用 Safari「添加到主屏幕」以开启后台来电通知</div>
     </div>
   </div>
 
@@ -360,6 +374,7 @@
     let notifyEnabled = true;
     let unreadCount = 0;
     let swRegistration = null;
+    let sharedAudioCtx = null; // 全局共享 AudioContext，解决 iOS Safari 后台禁音限制
 
     // ========== WebRTC 语音通话变量 ==========
     let peerConnection = null;
@@ -390,7 +405,95 @@
       ]
     };
 
-    // ========== 注册 Service Worker（用于系统级常驻来电通知） ==========
+    // ========== 解锁 iOS Safari 音频播放限制 ==========
+    function unlockIOSAudio() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!sharedAudioCtx) {
+          sharedAudioCtx = new AudioCtx();
+        }
+        if (sharedAudioCtx.state === 'suspended') {
+          sharedAudioCtx.resume();
+        }
+        // 播放一帧极短静音触发 iOS 硬件音频通道激活
+        const buffer = sharedAudioCtx.createBuffer(1, 1, 22050);
+        const source = sharedAudioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(sharedAudioCtx.destination);
+        source.start(0);
+      } catch (e) {}
+    }
+
+    // 在任意首次触摸/点击时自动解锁 iOS 音频
+    document.addEventListener('touchstart', unlockIOSAudio, { once: true });
+    document.addEventListener('click', unlockIOSAudio, { once: true });
+
+    // ========== 双音电话铃声（新消息、戳一戳、语音来电共用） ==========
+    function playNotificationSound() {
+      if (!notifyEnabled) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!sharedAudioCtx) {
+          sharedAudioCtx = new AudioCtx();
+        }
+        if (sharedAudioCtx.state === 'suspended') {
+          sharedAudioCtx.resume();
+        }
+
+        const now = sharedAudioCtx.currentTime;
+        [0, 0.22].forEach((offset) => {
+          const osc1 = sharedAudioCtx.createOscillator();
+          const osc2 = sharedAudioCtx.createOscillator();
+          const gain = sharedAudioCtx.createGain();
+
+          osc1.type = 'sine';
+          osc2.type = 'sine';
+          osc1.frequency.setValueAtTime(784, now + offset);     // G5
+          osc2.frequency.setValueAtTime(1046.5, now + offset);  // C6
+
+          gain.gain.setValueAtTime(0.18, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.18);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(sharedAudioCtx.destination);
+
+          osc1.start(now + offset);
+          osc2.start(now + offset);
+          osc1.stop(now + offset + 0.18);
+          osc2.stop(now + offset + 0.18);
+        });
+      } catch (e) {}
+    }
+
+    // ========== 语音来电循环响铃 ==========
+    function startRingtone() {
+      if (!notifyEnabled) return;
+      stopRingtone();
+      playNotificationSound();
+      ringtoneInterval = setInterval(playNotificationSound, 1800);
+    }
+
+    function stopRingtone() {
+      if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
+      }
+      if (titleFlashInterval) {
+        clearInterval(titleFlashInterval);
+        titleFlashInterval = null;
+        document.title = '聊天室';
+      }
+      if (swRegistration && swRegistration.getNotifications) {
+        swRegistration.getNotifications({ tag: 'incoming-voice-call' }).then((list) => {
+          list.forEach((n) => n.close());
+        }).catch(() => {});
+      }
+    }
+
+    // ========== 注册 Service Worker ==========
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
         swRegistration = reg;
@@ -407,68 +510,8 @@
       });
     }
 
-    // ========== 持续循环电话铃声 ==========
-    function startRingtone() {
-      if (!notifyEnabled) return;
-      stopRingtone();
-
-      const playRingBurst = () => {
-        try {
-          const AudioCtx = window.AudioContext || window.webkitAudioContext;
-          const ctx = new AudioCtx();
-          const now = ctx.currentTime;
-
-          // 模拟经典双音电话铃声
-          [0, 0.22].forEach((offset) => {
-            const osc1 = ctx.createOscillator();
-            const osc2 = ctx.createOscillator();
-            const gain = ctx.createGain();
-
-            osc1.type = 'sine';
-            osc2.type = 'sine';
-            osc1.frequency.setValueAtTime(784, now + offset); // G5
-            osc2.frequency.setValueAtTime(1046.5, now + offset); // C6
-
-            gain.gain.setValueAtTime(0.16, now + offset);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.18);
-
-            osc1.connect(gain);
-            osc2.connect(gain);
-            gain.connect(ctx.destination);
-
-            osc1.start(now + offset);
-            osc2.start(now + offset);
-            osc1.stop(now + offset + 0.18);
-            osc2.stop(now + offset + 0.18);
-          });
-        } catch (e) {}
-      };
-
-      playRingBurst();
-      ringtoneInterval = setInterval(playRingBurst, 1800);
-    }
-
-    function stopRingtone() {
-      if (ringtoneInterval) {
-        clearInterval(ringtoneInterval);
-        ringtoneInterval = null;
-      }
-      if (titleFlashInterval) {
-        clearInterval(titleFlashInterval);
-        titleFlashInterval = null;
-        document.title = '聊天室';
-      }
-      // 关闭残留的系统来电通知
-      if (swRegistration) {
-        swRegistration.getNotifications({ tag: 'incoming-voice-call' }).then((list) => {
-          list.forEach((n) => n.close());
-        });
-      }
-    }
-
-    // ========== 弹出系统级来电横幅通知 ==========
+    // ========== 弹出系统级来电横幅通知（兼容 iOS 主屏幕 PWA 与桌面端） ==========
     async function showSystemCallNotification(callerName) {
-      // 标题栏闪烁提醒 + 标签页红点
       updateFavicon(true);
       let toggle = false;
       clearInterval(titleFlashInterval);
@@ -486,7 +529,7 @@
         badge: iconUrl,
         tag: 'incoming-voice-call',
         renotify: true,
-        requireInteraction: true, // 系统级常驻横幅：不手动操作不会自动消失
+        requireInteraction: true,
         vibrate: [300, 150, 300, 150, 300],
         actions: [
           { action: 'accept', title: '✅ 接听' },
@@ -501,59 +544,48 @@
         } catch (e) {}
       }
 
-      // 降级方案（未启用 SW 时使用普通系统常驻通知）
-      const n = new Notification(`📞 语音来电：${callerName}`, {
-        body: options.body,
-        icon: iconUrl,
-        tag: 'incoming-voice-call',
-        requireInteraction: true
-      });
-      n.onclick = () => {
-        window.focus();
-        n.close();
-      };
+      try {
+        const n = new Notification(`📞 语音来电：${callerName}`, {
+          body: options.body,
+          icon: iconUrl,
+          tag: 'incoming-voice-call'
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch (e) {}
     }
 
-    // ========== 动态 Favicon ==========
+    // ========== 动态 Favicon 与苹果主屏幕图标 ==========
     function updateFavicon(hasBadge) {
       const canvas = document.createElement('canvas');
-      canvas.width = 64; canvas.height = 64;
+      canvas.width = 128; canvas.height = 128;
       const ctx = canvas.getContext('2d');
 
-      const grad = ctx.createLinearGradient(0, 0, 64, 64);
+      const grad = ctx.createLinearGradient(0, 0, 128, 128);
       grad.addColorStop(0, '#a855f7');
-      grad.addColorStop(1, '#581c87');
+      grad.addColorStop(1, '#4c1d95');
       ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(32, 32, 28, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(64, 64, 58, 0, Math.PI * 2); ctx.fill();
 
       ctx.fillStyle = '#faf5ff';
-      ctx.beginPath(); ctx.roundRect(16, 20, 32, 22, 6); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(22, 42); ctx.lineTo(18, 49); ctx.lineTo(30, 42); ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(32, 40, 64, 44, 12);
+      } else {
+        ctx.rect(32, 40, 64, 44);
+      }
+      ctx.fill();
+      ctx.beginPath(); ctx.moveTo(44, 84); ctx.lineTo(36, 98); ctx.lineTo(60, 84); ctx.closePath(); ctx.fill();
 
       if (hasBadge) {
         ctx.fillStyle = '#ff3b30';
-        ctx.beginPath(); ctx.arc(50, 14, 12, 0, Math.PI * 2); ctx.fill();
-        ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(100, 28, 22, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
       }
-      document.getElementById('favicon').href = canvas.toDataURL('image/png');
-    }
-
-    // ========== 普通消息提示音 ==========
-    function playNotificationSound() {
-      if (!notifyEnabled) return;
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(); osc.stop(ctx.currentTime + 0.25);
-      } catch (e) {}
+      const dataUrl = canvas.toDataURL('image/png');
+      document.getElementById('favicon').href = dataUrl;
+      if (!hasBadge) {
+        document.getElementById('appleTouchIcon').href = dataUrl;
+      }
     }
 
     // ========== 初始化 ==========
@@ -572,12 +604,15 @@
     });
 
     function requestNotificationPermission() {
-      if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
+      try {
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission().catch(() => {});
+        }
+      } catch (e) {}
     }
 
     function toggleNotificationSetting() {
+      unlockIOSAudio();
       notifyEnabled = !notifyEnabled;
       document.getElementById('notifyToggleBtn').textContent = notifyEnabled ? '🔔 提醒: 开' : '🔕 提醒: 关';
       if (notifyEnabled) {
@@ -596,16 +631,19 @@
         document.title = `(${unreadCount}条新消息) 聊天室`;
         updateFavicon(true);
         if (notifyEnabled && 'Notification' in window && Notification.permission === 'granted') {
-          const n = new Notification(`新消息 - ${msg.nickname}`, {
-            body: msg.text || '[图片消息]', tag: 'chatroom-new-msg'
-          });
-          n.onclick = function() { window.focus(); this.close(); };
+          try {
+            const n = new Notification(`新消息 - ${msg.nickname}`, {
+              body: msg.text || '[图片消息]', tag: 'chatroom-new-msg'
+            });
+            n.onclick = function() { window.focus(); this.close(); };
+          } catch (e) {}
         }
       }
     }
 
     // ========== 登录 ==========
     function joinChat() {
+      unlockIOSAudio();
       const nickname = document.getElementById('nicknameInput').value.trim();
       if (!nickname) { alert('请输入昵称'); return; }
       myNickname = nickname;
@@ -634,7 +672,7 @@
       pc.ontrack = (event) => {
         const remoteAudio = document.getElementById('remoteAudio');
         remoteAudio.srcObject = event.streams[0];
-        remoteAudio.play().catch(err => console.warn('音频播放需交互:', err));
+        remoteAudio.play().catch(() => {});
       };
 
       pc.onconnectionstatechange = () => {
@@ -658,16 +696,20 @@
       }
     }
 
-    // 发起语音呼叫
     async function startVoiceCall(targetNickname) {
+      unlockIOSAudio();
       if (peerConnection || callTarget) {
         alert('当前正在通话中，请先挂断');
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('当前浏览器环境不支持麦克风调用，请使用 HTTPS 网址并在 Safari 或 Chrome 中打开');
         return;
       }
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       } catch (err) {
-        alert('无法访问麦克风，请确保浏览器已授权麦克风权限（且页面通过 HTTPS 或 localhost 访问）');
+        alert('无法访问麦克风，请在系统设置中允许浏览器使用麦克风权限');
         return;
       }
 
@@ -685,8 +727,8 @@
       ]);
     }
 
-    // 接听来电
     async function acceptIncomingCall() {
+      unlockIOSAudio();
       stopRingtone();
       updateFavicon(false);
       if (!pendingOffer || !callTarget) return;
@@ -712,7 +754,6 @@
       startCallTimer();
     }
 
-    // 拒绝来电
     function rejectIncomingCall() {
       stopRingtone();
       updateFavicon(false);
@@ -722,7 +763,6 @@
       endCallUI();
     }
 
-    // 挂断通话
     function hangupCall() {
       stopRingtone();
       updateFavicon(false);
@@ -834,13 +874,14 @@
         chatBox.classList.add('shake-effect');
         playNotificationSound();
         if (document.hidden && notifyEnabled && 'Notification' in window && Notification.permission === 'granted') {
-          new Notification('👉 你被管理员戳了一下', {
-            body: `管理员 ${data.from} 正在呼叫你！`, tag: 'chatroom-poke'
-          });
+          try {
+            new Notification('👉 你被管理员戳了一下', {
+              body: `管理员 ${data.from} 正在呼叫你！`, tag: 'chatroom-poke'
+            });
+          } catch (e) {}
         }
       });
 
-      // ========== 语音通话信令接收（带系统级通知 + 持续响铃） ==========
       socket.on('call-offer', ({ from, offer }) => {
         if (peerConnection || callTarget) {
           socket.emit('call-reject', { to: from, reason: '对方正在通话中' });
@@ -850,13 +891,9 @@
         callTarget = from;
         pendingOffer = offer;
 
-        // 1. 循环响铃
         startRingtone();
-
-        // 2. 弹出系统级常驻横幅通知
         showSystemCallNotification(from);
 
-        // 3. 页面内通话横幅
         showCallBanner(`📲 ${from} 邀请你进行语音通话...`, [
           { text: '接听', cls: 'btn-accept', fn: acceptIncomingCall },
           { text: '拒绝', cls: 'btn-hangup', fn: rejectIncomingCall }
