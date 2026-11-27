@@ -77,13 +77,13 @@ io.on('connection', (socket) => {
     const message = {
       nickname,
       text: msg.text || '',
-      image: msg.image || null,
+      image: msg.image || null,  // Base64 字符串
       time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       isAdmin: socket.isAdmin || false
     };
 
     messages.push(message);
-    saveMessages();  // 保存到 JSON 文件
+    saveMessages();
     io.emit('chat message', message);
   });
 
