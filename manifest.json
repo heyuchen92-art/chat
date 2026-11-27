@@ -1,0 +1,8 @@
+{
+  "name": "暗紫秘境聊天室",
+  "short_name": "聊天室",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0616",
+  "theme_color": "#4c1d95"
+}
